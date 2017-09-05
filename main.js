@@ -15,12 +15,18 @@ let newCreepBody = [
 ];
 
 module.exports.loop = function () {
+	console.log(Game.time + ' -----------------');
+
 	Object.keys(Memory.creeps).forEach((name) => {
 		if (!Game.creeps[name]) {
 			console.log('Clearing non-existing creep memory: ' + name + ' (' + Memory.creeps[name].role + ')');
 			delete Memory.creeps[name];
 		}
 	});
+
+	if (Game.time % 10 == 0) {
+		console.log('Memory.attackCount: ', Memory.attackCount);
+	}
 
 	tryToFillRoleQuotas(desiredCountByRole);
 
@@ -46,20 +52,21 @@ module.exports.loop = function () {
 		);
 		for (let towerKey in towers) {
 			let tower = towers[towerKey];
-			if (tower.energy > tower.energyCapacity - 250) {
-				let damagedStructures = tower.pos.findInRange(FIND_STRUCTURES, 10, {
-					filter: (structure) => structure.hits < structure.hitsMax
-				});
-				damagedStructures.sort((a, b) => a.hits > b.hits); //lowest first
-				let damagedStructure = damagedStructures[0];
-				if(damagedStructure) {
-					tower.repair(damagedStructure);
-				}
-			}
-
-			var closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-			if(closestHostile) {
+			let closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+			if (closestHostile) {
 				tower.attack(closestHostile);
+				Memory.attackCount = (Memory.attackCount || 0) + 1;
+			} else {
+				if (tower.energy > tower.energyCapacity - 250) {
+					let damagedStructures = tower.pos.findInRange(FIND_STRUCTURES, 10, {
+						filter: (structure) => structure.hits < structure.hitsMax
+					});
+					damagedStructures.sort((a, b) => a.hits > b.hits); //lowest first
+					let damagedStructure = damagedStructures[0];
+					if(damagedStructure) {
+						tower.repair(damagedStructure);
+					}
+				}
 			}
 		}
 	}
@@ -104,7 +111,6 @@ function tryToFillRoleQuotas() {
 
 
 
-	console.log('-----------------');
 	Object.keys(realDesiredCountByRole).forEach((role) => {
 		console.log('countByRole['+role+']: ' + countByRole[role] + ' ?< ' + realDesiredCountByRole[role]);
 	});

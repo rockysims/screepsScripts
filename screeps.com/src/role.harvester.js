@@ -22,7 +22,7 @@ module.exports = {
 		} else {
 			let target = null;
 			target = target ||
-				creep.room.find(FIND_STRUCTURES, {
+				creep.pos.findClosestByPath(FIND_STRUCTURES, {
 				filter: (structure) => {
 					return (structure.structureType == STRUCTURE_EXTENSION
 							|| structure.structureType == STRUCTURE_SPAWN
@@ -30,14 +30,14 @@ module.exports = {
 						) &&
 						structure.energy < structure.energyCapacity;
 				}
-			})[0];
+			});
 			target = target ||
-				creep.room.find(FIND_STRUCTURES, {
+				creep.pos.findClosestByPath(FIND_STRUCTURES, {
 					filter: (structure) => {
 						return structure.structureType == STRUCTURE_WALL
 							&& structure.energy < structure.energyCapacity;
 					}
-				})[0];
+				});
 
 			if(target) {
 				if(creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {

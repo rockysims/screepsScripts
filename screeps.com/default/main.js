@@ -61,7 +61,21 @@ module.exports.loop = function () {
 					let damagedStructures = tower.pos.findInRange(FIND_STRUCTURES, 10, {
 						filter: (structure) => structure.hits < structure.hitsMax
 					});
-					damagedStructures.sort((a, b) => a.hits > b.hits); //lowest first
+					damagedStructures = damagedStructures.sort((a, b) => a.hits - b.hits); //lowest first
+					let damagedStructure = damagedStructures[0];
+					if(damagedStructure) {
+						tower.repair(damagedStructure);
+					}
+				} else if (tower.energy > tower.energyCapacity - 300) {
+					var ramparts = room.find(
+						FIND_MY_STRUCTURES, {filter: {structureType: STRUCTURE_RAMPART}}
+					);
+					let lowRamparts = ramparts.filter((rampart) => rampart.hits < 1000);
+
+					let damagedStructures = tower.pos.findInRange(lowRamparts, 10, {
+						filter: (s) => s.hits < s.hitsMax
+					});
+					damagedStructures.sort((a, b) => a.hits - b.hits); //lowest first
 					let damagedStructure = damagedStructures[0];
 					if(damagedStructure) {
 						tower.repair(damagedStructure);
@@ -94,7 +108,7 @@ function tryToFillRoleQuotas() {
 		countByRole[creep.memory.role]++;
 	});
 
-	let room = allCreeps[0].room;
+	let room = Game.rooms['E43S11'];
 	let constructions = room.find(FIND_CONSTRUCTION_SITES);
 	if (constructions.length <= 0) {
 		realDesiredCountByRole.upgrader += realDesiredCountByRole.builder;

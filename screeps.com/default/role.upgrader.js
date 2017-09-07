@@ -86,8 +86,10 @@ module.exports = {
 		}
 		else {
 			var source = creep.room.find(FIND_SOURCES)[1];
-			if(creep.harvest(source) == ERR_NOT_IN_RANGE) {
+			if (creep.pos.getRangeTo(source) > 1) {
 				creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
+			} else {
+				creep.harvest(source)
 			}
 		}
 	}

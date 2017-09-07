@@ -21,25 +21,31 @@ module.exports = {
 			}
 		} else {
 			let target = null;
-			target = target ||
-				creep.pos.findClosestByPath(FIND_STRUCTURES, {
-				filter: (structure) => {
-					return (structure.structureType == STRUCTURE_EXTENSION
-							|| structure.structureType == STRUCTURE_SPAWN
-							|| structure.structureType == STRUCTURE_TOWER
-						) &&
-						structure.energy < structure.energyCapacity;
-				}
-			});
-			target = target ||
-				creep.pos.findClosestByPath(FIND_STRUCTURES, {
+
+			if (!target) {
+				let targets = creep.room.find(FIND_STRUCTURES, {
 					filter: (structure) => {
-						return structure.structureType == STRUCTURE_WALL
+						return (structure.structureType == STRUCTURE_EXTENSION
+								|| structure.structureType == STRUCTURE_SPAWN
+							) &&
+							structure.energy < structure.energyCapacity;
+					}
+				});
+				target = creep.pos.findClosestByPath(targets);
+			}
+
+			if (!target) {
+				let targets = creep.room.find(FIND_STRUCTURES, {
+					filter: (structure) => {
+						return structure.structureType == STRUCTURE_TOWER
 							&& structure.energy < structure.energyCapacity;
 					}
 				});
+				targets.sort((a, b) => a.energy - b.energy); //lowest first
+				target = targets[0];
+			}
 
-			if(target) {
+			if (target) {
 				if(creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
 					creep.moveTo(target, {visualizePathStyle: {stroke: '#ffffff'}});
 				}

@@ -1,18 +1,10 @@
-require('creepExtensions')();
-let util = require('util');
-
-module.exports.loop = function () {
-	if (Game.time % 5 == 0) {
-		console.log(Game.time + ' =================');
-		Object.keys(Memory.creeps).forEach((name) => {
-			if (!Game.creeps[name]) {
-				console.log('Clearing non-existing creep memory: ' + name + ' (' + Memory.creeps[name].role + ')');
-				delete Memory.creeps[name];
-			}
-		});
-	}
-
-	util.getCreeps().forEach(c => c.doThat());
-
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var other_1 = require("other");
+var sub_1 = require("folder__subFolder__sub");
+exports.loop = function () {
+    console.log('loop()');
+    other_1.default();
+    sub_1.default();
+    console.log('abc');
 };

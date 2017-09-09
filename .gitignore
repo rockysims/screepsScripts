@@ -2,3 +2,5 @@
 .idea/
 .sync
 /yith/dist
+/screeps.com
+/node_modules

@@ -1,3 +1,3 @@
-export default function() {
-	console.log('other called');
+export default {
+	x: number = 1
 }

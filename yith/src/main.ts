@@ -4,16 +4,13 @@ import o from 'other';
 import s from 'folder/subFolder/sub';
 
 export const loop = function(): void {
-	//commit latest work to git
-	//add typings.d.ts for screeps
-
 	console.log('loop()');
-	o();
+	console.log('x: ' + o.x);
 	s();
 
-	let creeps: {
-		[creepName: string]: Creep;
-	} = Game.creeps;
+	//let creeps: {
+	//	[creepName: string]: Creep;
+	//} = Game.creeps;
 
 
 

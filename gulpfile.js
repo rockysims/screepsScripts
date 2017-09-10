@@ -54,5 +54,5 @@ gulp.task('deploy:sim', function() {
 });
 
 gulp.task('sim', function(done) {
-	sequence('clean:sim', 'deploy:sim', done);
+	sequence('default', 'clean:sim', 'deploy:sim', done);
 });

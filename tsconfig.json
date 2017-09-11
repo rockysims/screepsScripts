@@ -9,6 +9,7 @@
     "noResolve": false,
     "experimentalDecorators": true,
     "strict": true,
+    "strictNullChecks": true
     "noUnusedParameters": true,
     "noUnusedLocals": true,
     "sourceMap": true,

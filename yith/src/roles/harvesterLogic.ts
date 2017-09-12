@@ -7,6 +7,7 @@ export default {
 	run: function(creep: Creep) {
 		let creepEnergy = creep.carry.energy || 0;
 		let mem = creep.memory;
+		let origMemHarvesting = mem.harvesting;
 
 		if (mem.harvesting) {
 			let container: Container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
@@ -43,6 +44,8 @@ export default {
 					}
 				});
 
+			target = target || creep.room.controller;
+
 			if (target) {
 				Action.deliver(creep, target);
 			} else {
@@ -50,6 +53,7 @@ export default {
 					filter: (flag: Flag) => flag.name == 'Idle1'
 				})[0];
 				if (idleFlag instanceof Flag) {
+					creep.say('idle');
 					creep.moveTo(idleFlag, {visualizePathStyle: {stroke: '#ff0000'}})
 				}
 			}
@@ -59,7 +63,10 @@ export default {
 			}
 		}
 
-
+		if (mem.harvesting != origMemHarvesting) {
+			if (mem.harvesting) creep.say('harvest');
+			else creep.say('deliver');
+		}
 	},
 	generateSpawnRequest: function(room: Room): SpawnRequest {
 		let all = getAll();
@@ -77,7 +84,7 @@ export default {
 			return {
 				priority: 8,
 				generateBody: (): string[] => {
-					return [WORK, WORK, CARRY, MOVE];
+					return [WORK, CARRY, MOVE, MOVE];
 				},
 				memory: {role: 'harvester'}
 			};
@@ -88,6 +95,5 @@ export default {
 				memory: {role: 'none'}
 			};
 		}
-
 	}
 };

@@ -2,13 +2,16 @@
 
 import Log from 'util/Log';
 import getAll from 'getAll';
+import SpawnRequest from 'SpawnRequest';
 import harvesterLogic from 'roles/harvesterLogic';
+
 //import builderLogic from 'roles/builderLogic';
 //import minerLogic from 'roles/minerLogic';
 //import carrierLogic from 'roles/carrierLogic';
 //import upgraderLogic from 'roles/upgraderLogic';
 //import repairerLogic from 'roles/repairerLogic';
-import SpawnRequest from 'SpawnRequest';
+
+//TODO: add 'gulp sim:watch'
 
 export const loop = function(): void {
 	if (Game.time % 5 == 0) {

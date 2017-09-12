@@ -5,17 +5,19 @@ interface AllInterface {
 }
 
 let cachedAll: AllInterface;
-export default function(): AllInterface {
-	if (!cachedAll) {
-		cachedAll = {
-			rooms: Object.keys(Game.rooms)
-				.map(key => Game.rooms[key]),
-			spawns: Object.keys(Game.spawns)
-				.map(key => Game.spawns[key]),
-			creeps: Object.keys(Game.creeps)
-				.map(key => Game.creeps[key])
-		};
-	}
+export default {
+	get: function(): AllInterface {
+		if (!cachedAll) {
+			cachedAll = {
+				rooms: Object.keys(Game.rooms)
+					.map(key => Game.rooms[key]),
+				spawns: Object.keys(Game.spawns)
+					.map(key => Game.spawns[key]),
+				creeps: Object.keys(Game.creeps)
+					.map(key => Game.creeps[key])
+			};
+		}
 
-	return cachedAll;
+		return cachedAll;
+	}
 }

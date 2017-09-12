@@ -9,9 +9,9 @@
     "noResolve": false,
     "experimentalDecorators": true,
     "strict": true,
-    "strictNullChecks": true
-    "noUnusedParameters": true,
-    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "noUnusedParameters": true, //change back to true?
+    "noUnusedLocals": true, //change back to true?
     "sourceMap": true,
     "baseUrl": "./yith/src/"
   },

@@ -3,8 +3,10 @@ import Action from "util/Action";
 import getAll from 'getAll';
 import SpawnRequest from '../SpawnRequest';
 
-export default {
-	run: function(creep: Creep) {
+export default class HarvesterLogic {
+	static onTick() {}
+
+	static run(creep: Creep) {
 		let creepEnergy = creep.carry.energy || 0;
 		let mem = creep.memory;
 		let origMemHarvesting = mem.harvesting;
@@ -36,27 +38,18 @@ export default {
 			}
 		} else {
 			let target: Container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-					filter: (structure: Structure) => {
-						return (structure.structureType == STRUCTURE_EXTENSION
-								|| structure.structureType == STRUCTURE_SPAWN
-							) &&
-							(<Extension|Spawn>structure).energy < (<Extension|Spawn>structure).energyCapacity;
-					}
-				});
+				filter: (structure: Structure) => {
+					return (structure.structureType == STRUCTURE_EXTENSION
+							|| structure.structureType == STRUCTURE_SPAWN
+						) &&
+						(<Extension|Spawn>structure).energy < (<Extension|Spawn>structure).energyCapacity;
+				}
+			});
 
 			target = target || creep.room.controller;
 
-			if (target) {
-				Action.deliver(creep, target);
-			} else {
-				let idleFlag: Flag|{} = creep.room.find(FIND_FLAGS, {
-					filter: (flag: Flag) => flag.name == 'Idle1'
-				})[0];
-				if (idleFlag instanceof Flag) {
-					creep.say('idle');
-					creep.moveTo(idleFlag, {visualizePathStyle: {stroke: '#ff0000'}})
-				}
-			}
+			if (target) Action.deliver(creep, target);
+			else Action.idle(creep);
 
 			if (creepEnergy <= 0) {
 				mem.harvesting = true;
@@ -67,8 +60,9 @@ export default {
 			if (mem.harvesting) creep.say('harvest');
 			else creep.say('deliver');
 		}
-	},
-	generateSpawnRequest: function(room: Room): SpawnRequest {
+	}
+
+	static generateSpawnRequest(room: Room): SpawnRequest {
 		let all = getAll();
 
 		let creepsInRoom = all.creeps
@@ -96,4 +90,4 @@ export default {
 			};
 		}
 	}
-};
+}

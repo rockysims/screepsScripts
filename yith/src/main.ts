@@ -3,13 +3,12 @@
 import Log from 'util/Log';
 import getAll from 'getAll';
 import SpawnRequest from 'SpawnRequest';
-import harvesterLogic from 'roles/harvesterLogic';
-
-//import builderLogic from 'roles/builderLogic';
-//import minerLogic from 'roles/minerLogic';
-//import carrierLogic from 'roles/carrierLogic';
-//import upgraderLogic from 'roles/upgraderLogic';
-//import repairerLogic from 'roles/repairerLogic';
+import HarvesterLogic from 'roles/HarvesterLogic';
+import BuilderLogic from 'roles/BuilderLogic';
+import MinerLogic from 'roles/MinerLogic';
+//import carrierLogic from 'roles/CarrierLogic';
+//import upgraderLogic from 'roles/UpgraderLogic';
+//import repairerLogic from 'roles/RepairerLogic';
 
 //TODO: add 'gulp sim:watch'
 
@@ -18,7 +17,28 @@ export const loop = function(): void {
 		Log.log(Game.time + ' -----------------');
 	}
 
+	Object.keys(Memory.creeps).forEach((name) => {
+		if (!Game.creeps[name]) {
+			console.log('Clearing non-existing creep memory: ' + name + ' (' + Memory.creeps[name].role + ')');
+			delete Memory.creeps[name];
+		}
+	});
+
+	Object.keys(Memory.rooms).forEach((name) => {
+		if (!Game.rooms[name]) {
+			console.log('Clearing non-existing room memory: ' + name);
+			delete Memory.rooms[name];
+		}
+	});
+
 	let all = getAll();
+
+	HarvesterLogic.onTick();
+	BuilderLogic.onTick();
+	MinerLogic.onTick();
+	//CarrierLogic.onTick();
+	//UpgraderLogic.onTick();
+	//RepairerLogic.onTick();
 
 	//tick multi room creeps
 	//all.creeps.forEach((creep: Creep) => {
@@ -36,22 +56,22 @@ export const loop = function(): void {
 		//tick single room creeps
 		creeps.forEach((creep: Creep) => {
 			let role = creep.memory.role;
-			if (role == 'harvester') harvesterLogic.run(creep);
-			//else if (role == 'builder') builderLogic.run(creep);
-			//else if (role == 'miner') minerLogic.run(creep);
-			//else if (role == 'carrier') carrierLogic.run(creep);
-			//else if (role == 'upgrader') upgraderLogic.run(creep);
-			//else if (role == 'repairer') repairerLogic.run(creep);
+			if (role == 'harvester') HarvesterLogic.run(creep);
+			else if (role == 'builder') BuilderLogic.run(creep);
+			else if (role == 'miner') MinerLogic.run(creep);
+			//else if (role == 'carrier') CarrierLogic.run(creep);
+			//else if (role == 'upgrader') UpgraderLogic.run(creep);
+			//else if (role == 'repairer') RepairerLogic.run(creep);
 		});
 
 		//fill spawnRequests[]
 		let spawnRequests: SpawnRequest[] = [];
-		spawnRequests.push(harvesterLogic.generateSpawnRequest(room));
-		//spawnRequests.push(builderLogic.generateSpawnRequest(room));
-		//spawnRequests.push(minerLogic.generateSpawnRequest(room));
-		//spawnRequests.push(carrierLogic.generateSpawnRequest(room));
-		//spawnRequests.push(upgraderLogic.generateSpawnRequest(room));
-		//spawnRequests.push(repairerLogic.generateSpawnRequest(room));
+		spawnRequests.push(HarvesterLogic.generateSpawnRequest(room));
+		spawnRequests.push(BuilderLogic.generateSpawnRequest(room));
+		spawnRequests.push(MinerLogic.generateSpawnRequest(room));
+		//spawnRequests.push(CarrierLogic.generateSpawnRequest(room));
+		//spawnRequests.push(UpgraderLogic.generateSpawnRequest(room));
+		//spawnRequests.push(RepairerLogic.generateSpawnRequest(room));
 
 		let spawnRequest: SpawnRequest | undefined = spawnRequests
 			.filter(sr => sr.priority > 0) //0 priority means ignore
@@ -65,7 +85,7 @@ export const loop = function(): void {
 
 		//try to use spawn to execute spawnRequest
 		if (spawn && spawnRequest) {
-			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable); //TODO: confirm bootstrap works when 0 creeps && empty extensions
+			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable);
 			let memory: {role: string} = spawnRequest.memory;
 			spawn.createCreep(body, undefined, memory);
 		}
@@ -124,3 +144,31 @@ export const loop = function(): void {
 	//	sort spawn requests for highest priority
 	//	wait for enough energy then spawn
 };
+
+
+
+
+
+
+
+
+
+
+
+//TODO: move to it's own file?
+//class Mem {
+//	static onTick() {
+//		Memory['byId'] = Memory['byId'] || {};
+//		Object.keys(Memory['byId']).forEach((id: string) => {
+//			if (!Game.getObjectById(id)) {
+//				console.log("Clearing non-existing memory['byId']: " + id);
+//				delete Memory['byId'][id];
+//			}
+//		});
+//	}
+//
+//	static byId(id: string): {} {
+//		Memory['byId'] = Memory['byId'] || {};
+//		return Memory['byId'][id];
+//	}
+//}

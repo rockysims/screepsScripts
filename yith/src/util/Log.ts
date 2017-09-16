@@ -5,4 +5,7 @@ export default class Log {
 	static warn(s: string) {
 		console.log('WARNING: ' + s);
 	}
+	static error(s: string) {
+		console.log('ERROR: ' + s);
+	}
 }

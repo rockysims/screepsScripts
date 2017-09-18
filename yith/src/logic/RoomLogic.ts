@@ -13,7 +13,7 @@ export default class RoomLogic {
 		}).length;
 
 		if (constructingExtensionCount <= 0) {
-			let builtExtensions: Container[] = room.find(FIND_MY_STRUCTURES, {
+			let builtExtensions: Extension[] = room.find(FIND_MY_STRUCTURES, {
 				filter: (structure: Structure) => structure.structureType == STRUCTURE_EXTENSION
 			});
 			let maxExtensions: number = Util.maxExtensionCount(room);
@@ -25,18 +25,14 @@ export default class RoomLogic {
 				if (spawn) {
 					let origin: RoomPosition = spawn.pos;
 					let n = 1;
-					while (n != -1 && n < 3) {
+					while (n != -1 && n < 50) {
 						let nthPos: RoomPosition|undefined = Util.getNthClosest(origin, n);
 						if (nthPos) {
-							room.visual.circle(nthPos);
-
-							//TODO: ensure not only terrain is plain|swamp but also that there is no building there
-							if (Util.terrainMatch([nthPos], ['plain'])) {
-								let sides = Util.getAdjacent(nthPos);
-								if (Util.terrainMatch(sides, ['plain', 'swamp'])) {
+							if (Util.terrainMatch([nthPos], ['plain']) && Util.isBuildable([nthPos])) {
+								let sides = Util.getAdjacent4(nthPos);
+								if (Util.terrainMatch(sides, ['plain', 'swamp']) && Util.isBuildable(sides)) {
 									//found valid pos
-									//pos = nthPos;
-									room.visual.text(n + '', nthPos);
+									pos = nthPos;
 									break;
 								}
 							}
@@ -48,9 +44,9 @@ export default class RoomLogic {
 
 				if (pos) {
 					//place extension
-					room.createConstructionSite(pos, STRUCTURE_CONTAINER);
+					room.createConstructionSite(pos, STRUCTURE_EXTENSION);
 				} else {
-					Log.warn('RoomLogic::run() failed to find pos to place extension.')
+					Log.warn('RoomLogic::run() failed to find pos to place extension. Room: ' + room.name);
 				}
 			}
 		}

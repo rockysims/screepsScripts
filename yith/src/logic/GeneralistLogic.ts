@@ -12,27 +12,7 @@ export default class GeneralistLogic {
 		let origMemHarvesting = mem.harvesting;
 
 		if (mem.harvesting) {
-			let container: Container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
-				filter: (structure: Structure) => {
-					if (structure.structureType == STRUCTURE_CONTAINER) {
-						return (<Container>structure).store >= 0;
-					} else {
-						return false;
-					}
-				}
-			});
-			let source: Source = creep.pos.findClosestByPath(FIND_SOURCES, {
-				filter: (source: Source) => source.energy >= 0
-			});
-
-			if (container) {
-				Action.collect(creep, container);
-			} else if (source) {
-				Action.harvest(creep, source);
-			} else if (creepEnergy > 0) {
-				mem.harvesting = false;
-			}
-
+			Action.fillEnergy(creep);
 			if (creepEnergy >= creep.carryCapacity) {
 				mem.harvesting = false;
 			}

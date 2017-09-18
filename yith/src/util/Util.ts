@@ -49,7 +49,31 @@ export default class Util {
 		});
 	}
 
-	static getAdjacent(pos: RoomPosition): RoomPosition[] {
+	static isBuildable(positions: RoomPosition[]): boolean {
+		let buildable: boolean = true;
+
+		const nonBuildableTypes: string[] = [
+			LOOK_SOURCES,
+			LOOK_MINERALS,
+			LOOK_STRUCTURES,
+			LOOK_CONSTRUCTION_SITES,
+			LOOK_NUKES
+		];
+		positions.forEach((pos: RoomPosition) => {
+			let looks: LookAtResult[] = pos.look();
+			for (let look of looks) {
+				let isWall: boolean = look.terrain == 'wall';
+				let isBuildable: boolean = nonBuildableTypes.indexOf(look.type) == -1;
+				if (isWall || !isBuildable) {
+					buildable = false;
+				}
+			}
+		});
+
+		return buildable;
+	}
+
+	static getAdjacent4(pos: RoomPosition): RoomPosition[] {
 		let room = Game.rooms[pos.roomName];
 		if (room) {
 			let adjacents: (RoomPosition|undefined)[] = [];
@@ -57,6 +81,24 @@ export default class Util {
 			adjacents.push(room.getPositionAt(pos.x - 1, pos.y) || undefined);
 			adjacents.push(room.getPositionAt(pos.x, pos.y + 1) || undefined);
 			adjacents.push(room.getPositionAt(pos.x, pos.y - 1) || undefined);
+			return <RoomPosition[]>adjacents.filter((pos: RoomPosition) => !!pos);
+		}
+
+		return [];
+	}
+
+	static getAdjacent8(pos: RoomPosition): RoomPosition[] {
+		let room = Game.rooms[pos.roomName];
+		if (room) {
+			let adjacents: (RoomPosition|undefined)[] = [];
+			adjacents.push(room.getPositionAt(pos.x + 1, pos.y) || undefined);
+			adjacents.push(room.getPositionAt(pos.x - 1, pos.y) || undefined);
+			adjacents.push(room.getPositionAt(pos.x, pos.y + 1) || undefined);
+			adjacents.push(room.getPositionAt(pos.x, pos.y - 1) || undefined);
+			adjacents.push(room.getPositionAt(pos.x + 1, pos.y + 1) || undefined);
+			adjacents.push(room.getPositionAt(pos.x + 1, pos.y - 1) || undefined);
+			adjacents.push(room.getPositionAt(pos.x - 1, pos.y + 1) || undefined);
+			adjacents.push(room.getPositionAt(pos.x - 1, pos.y - 1) || undefined);
 			return <RoomPosition[]>adjacents.filter((pos: RoomPosition) => !!pos);
 		}
 

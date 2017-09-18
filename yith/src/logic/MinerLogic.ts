@@ -14,39 +14,53 @@ export default class MinerLogic {
 				let creepsInRoom = all.creeps
 					.filter((creep: Creep) => creep.room.name == room.name);
 				let countByRole: {[role: string]: number} = Util.countByRole(creepsInRoom);
-				let minerCount: number = countByRole['miner'];
+				let minerCount: number = countByRole['miner'] || 0;
 
-				//fill sourcesWithContainer & sourcesWithoutContainer[]
-				let sourcesWithoutContainer: Source[] = [];
-				let sourcesWithContainer: Source[] = [];
+				//fill sourcesWithContainerOrSite & sourcesWithoutContainer[]
+				let sourcesWithoutContainerOrSite: Source[] = [];
+				let sourcesWithContainerOrSite: Source[] = [];
 				let sources: Source[] = room.find(FIND_SOURCES);
-				let containers: Container[] = room.find(FIND_MY_STRUCTURES, {
+				let containers: Container[] = room.find(FIND_STRUCTURES, { //not FIND_MY_STRUCTURES
 					filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
+				});
+				let containerSites: ConstructionSite[] = room.find(FIND_CONSTRUCTION_SITES, {
+					filter: (containerSite: ConstructionSite) => containerSite.structureType == STRUCTURE_CONTAINER
 				});
 				sources.forEach((source: Source) => {
 					let container = containers
 						.filter((container: Container) => container.pos.inRangeTo(source, 1))
 						[0];
-					if (container) {
-						sourcesWithContainer.push(source);
+					let containerSite = containerSites
+						.filter((containerSite: ConstructionSite) => containerSite.pos.inRangeTo(source, 1))
+						[0];
+					if (container || containerSite) {
+						sourcesWithContainerOrSite.push(source);
 					} else {
-						sourcesWithoutContainer.push(source);
+						sourcesWithoutContainerOrSite.push(source);
 					}
 				});
 
 				//if (enough miners && more sources) build container
-				let enoughMiners = sourcesWithContainer.length <= minerCount;
-				if (enoughMiners && sourcesWithoutContainer.length > 0) {
+				let enoughMiners = sourcesWithContainerOrSite.length <= minerCount;
+				if (enoughMiners && sourcesWithoutContainerOrSite.length > 0) {
 					//place container next to sourcesWithoutContainer[nearest to spawn]
 					let spawn = all.spawns
 						.filter((spawn: Spawn) => spawn.room.name == room.name)
 						[0];
 					if (spawn) {
-						let source = spawn.pos.findClosestByPath(sourcesWithoutContainer);
-						let posBySource = PathFinder.search(spawn.pos, source.pos).path.pop();
+						let source = spawn.pos.findClosestByPath(sourcesWithoutContainerOrSite, {
+							ignoreCreeps: true
+						});
+						let tilesBySource: RoomPosition[] = Util
+							.getAdjacent8(source.pos)
+							.filter((pos: RoomPosition) => Util.isBuildable([pos]));
+						let posBySource = source.pos.findClosestByPath(tilesBySource, {
+							ignoreCreeps: true
+						});
 
 						if (posBySource) {
 							room.createConstructionSite(posBySource, STRUCTURE_CONTAINER);
+							//room.visual.circle(posBySource);
 						} else {
 							Log.error('MinerLogic::onTick() failed to find posBySource.');
 						}
@@ -86,7 +100,7 @@ export default class MinerLogic {
 
 		//try to set mem['containerId'] && container
 		if (source && !mem['containerId']) {
-			let container: Container = <Container>source.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+			let container: Container = <Container>source.pos.findInRange(FIND_STRUCTURES, 1, { //not FIND_MY_STRUCTURES
 				filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
 			})[0];
 			if (container) {
@@ -113,9 +127,9 @@ export default class MinerLogic {
 		let creepsInRoom = all.creeps
 			.filter((creep: Creep) => creep.room.name == room.name);
 		let countByRole: {[role: string]: number} = Util.countByRole(creepsInRoom);
-		let minerCount: number = countByRole['miner'];
+		let minerCount: number = countByRole['miner'] || 0;
 
-		let containerCount: number = room.find(FIND_MY_STRUCTURES, {
+		let containerCount: number = room.find(FIND_STRUCTURES, { //not FIND_MY_STRUCTURES
 			filter: (structure: Structure) =>
 				structure.structureType == STRUCTURE_CONTAINER
 				&& structure.pos.inRangeTo(structure, 1)
@@ -130,7 +144,7 @@ export default class MinerLogic {
 					energyAvailable -= Util.costOf([MOVE]);
 
 					let workCost = Util.costOf([WORK]);
-					while (energyAvailable - workCost > 0) {
+					while (energyAvailable - workCost >= 0) {
 						energyAvailable -= workCost;
 						body.unshift(WORK);
 						if (body.length >= 6) {

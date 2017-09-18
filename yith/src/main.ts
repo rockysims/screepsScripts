@@ -12,12 +12,15 @@ import MinerLogic from 'logic/MinerLogic';
 //import repairerLogic from 'logic/RepairerLogic';
 
 //TODO: add 'gulp sim:watch'
+//TODO: make the logic about what to do next sticky (so creep can't just change it's mind over and over)
+//	for example if Action.emptyEnergy() target chosen, stick with that target for at least 5 ticks
+//		instead of 5 ticks maybe try until 5 failures in a row? (failures like can't find path to target)
+//TODO: use Mem to avoid recalculating so much in RoleLogic classes?
 
 export const loop = function(): void {
 	if (Game.time % 5 == 0) {
 		Log.log(Game.time + ' -----------------');
 	}
-
 
 	Object.keys(Memory.creeps).forEach((name) => {
 		if (!Game.creeps[name]) {
@@ -132,14 +135,20 @@ export const loop = function(): void {
 
 	//upgrader mechanics
 	//	upgrade room ctrl by collecting energy from closest container || source
+	//	build container(s) by room ctrl
+	//		TODO: when?
+	//	request spawn upgrader
+	//		TODO: when?
 
 	//repairer mechanics
 	//	if (any structure hits < 75% full)
 	//		send repairer
 	//	if (any structure hits < 50% full)
 	//		request spawn repairer (priority based on lowest structure's % of full hits)
+	//	request spawn repairer
+	//		TODO: when?
 
-	//harvester mechanics
+	//generalist mechanics
 	//	foreach harvest
 	//		collect energy from closest container || source
 	//	let basicTrioOk =

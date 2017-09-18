@@ -98,26 +98,28 @@ export default class MinerLogic {
 		}
 		let source: Source|undefined = Game.getObjectById(mem['sourceId']) || undefined;
 
-		//try to set mem['containerId'] && container
-		if (source && !mem['containerId']) {
-			let container: Container = <Container>source.pos.findInRange(FIND_STRUCTURES, 1, { //not FIND_MY_STRUCTURES
+		//try to set mem['targetId'] && target
+		if (source && (!mem['targetId'] || !Game.getObjectById(mem['targetId']))) {
+			let target: Structure = <Structure>source.pos.findInRange(FIND_STRUCTURES, 1, { //not FIND_MY_STRUCTURES
 				filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
 			})[0];
-			if (container) {
-				mem['containerId'] = container.id;
+			if (target) {
+				mem['targetId'] = target.id;
 			} else {
-				Log.error('MinerLogic::run() failed to find container.');
+				Log.error('MinerLogic::run() failed to find target.');
 			}
 		}
-		let container: Container|undefined = Game.getObjectById(mem['containerId']) || undefined;
+		let target: Structure|undefined = Game.getObjectById(mem['targetId']) || undefined;
 
-		//harvest || moveTo container
-		if (source && container) {
-			if (creep.pos.isEqualTo(container)) {
+		//harvest || moveTo target
+		if (source && target) {
+			if (creep.pos.isEqualTo(target)) {
 				Action.harvest(creep, source);
 			} else {
-				Action.moveTo(creep, container, '#ff00ff');
+				Action.moveTo(creep, target, '#ff00ff');
 			}
+		} else if (source) {
+			Action.harvest(creep, source);
 		}
 	}
 

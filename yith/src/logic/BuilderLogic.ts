@@ -1,6 +1,6 @@
 import Util from "util/Util";
 import Action from "util/Action";
-import SpawnRequest from '../SpawnRequest';
+import SpawnRequest from 'SpawnRequest';
 
 export default class BuilderLogic {
 	static onTick() {
@@ -58,7 +58,7 @@ export default class BuilderLogic {
 		if (constructionSiteCount > builderCount) {
 			let priority = 7;
 			if (builderCount > 0) {
-				let desiredSpawnsCount = constructionSiteCount - builderCount;
+				let desiredSpawnsCount = Math.max(0, Math.ceil(constructionSiteCount / 2) - builderCount);
 				priority = Math.min(3 + desiredSpawnsCount, 7);
 			}
 			return {

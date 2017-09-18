@@ -20,7 +20,16 @@ export default class Action {
 	static deliver(creep: Creep, container: Container) {
 		let result: number = creep.transfer(container, RESOURCE_ENERGY);
 		if (result == ERR_NOT_IN_RANGE) {
-			creep.moveTo(container, {visualizePathStyle: {stroke: '#0000ff'}});
+			creep.moveTo(container, {visualizePathStyle: {stroke: '#00ff00'}});
+		} else if (result != 0) {
+			creep.say('#' + result);
+		}
+	}
+
+	static upgrade(creep: Creep, controller: Controller) {
+		let result: number = creep.upgradeController(controller);
+		if (result == ERR_NOT_IN_RANGE) {
+			creep.moveTo(controller, {visualizePathStyle: {stroke: '#00ff00'}});
 		} else if (result != 0) {
 			creep.say('#' + result);
 		}
@@ -33,6 +42,10 @@ export default class Action {
 		} else if (result != 0) {
 			creep.say('#' + result);
 		}
+	}
+
+	static moveTo(creep: Creep, target: RoomPosition|{pos: RoomPosition}, colorCode: string|undefined) {
+		creep.moveTo(target, {visualizePathStyle: {stroke: colorCode || '#ffffff'}});
 	}
 
 	static idle(creep: Creep) {

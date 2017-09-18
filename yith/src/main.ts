@@ -3,12 +3,13 @@
 import Log from 'util/Log';
 import getAll from 'getAll';
 import SpawnRequest from 'SpawnRequest';
-import HarvesterLogic from 'roles/HarvesterLogic';
-import BuilderLogic from 'roles/BuilderLogic';
-import MinerLogic from 'roles/MinerLogic';
-//import carrierLogic from 'roles/CarrierLogic';
-//import upgraderLogic from 'roles/UpgraderLogic';
-//import repairerLogic from 'roles/RepairerLogic';
+import RoomLogic from 'logic/RoomLogic';
+import GeneralistLogic from 'logic/GeneralistLogic';
+import BuilderLogic from 'logic/BuilderLogic';
+import MinerLogic from 'logic/MinerLogic';
+//import carrierLogic from 'logic/CarrierLogic';
+//import upgraderLogic from 'logic/UpgraderLogic';
+//import repairerLogic from 'logic/RepairerLogic';
 
 //TODO: add 'gulp sim:watch'
 
@@ -16,6 +17,7 @@ export const loop = function(): void {
 	if (Game.time % 5 == 0) {
 		Log.log(Game.time + ' -----------------');
 	}
+
 
 	Object.keys(Memory.creeps).forEach((name) => {
 		if (!Game.creeps[name]) {
@@ -33,7 +35,8 @@ export const loop = function(): void {
 
 	let all = getAll();
 
-	HarvesterLogic.onTick();
+	RoomLogic.onTick();
+	GeneralistLogic.onTick();
 	BuilderLogic.onTick();
 	MinerLogic.onTick();
 	//CarrierLogic.onTick();
@@ -51,12 +54,14 @@ export const loop = function(): void {
 
 	//tick rooms
 	all.rooms.forEach((room: Room) => {
+		RoomLogic.run(room);
+
 		let creeps = all.creeps.filter((creep: Creep) => creep.room.name == room.name);
 
 		//tick single room creeps
 		creeps.forEach((creep: Creep) => {
 			let role = creep.memory.role;
-			if (role == 'harvester') HarvesterLogic.run(creep);
+			if (role == 'generalist') GeneralistLogic.run(creep);
 			else if (role == 'builder') BuilderLogic.run(creep);
 			else if (role == 'miner') MinerLogic.run(creep);
 			//else if (role == 'carrier') CarrierLogic.run(creep);
@@ -66,7 +71,7 @@ export const loop = function(): void {
 
 		//fill spawnRequests[]
 		let spawnRequests: SpawnRequest[] = [];
-		spawnRequests.push(HarvesterLogic.generateSpawnRequest(room));
+		spawnRequests.push(GeneralistLogic.generateSpawnRequest(room));
 		spawnRequests.push(BuilderLogic.generateSpawnRequest(room));
 		spawnRequests.push(MinerLogic.generateSpawnRequest(room));
 		//spawnRequests.push(CarrierLogic.generateSpawnRequest(room));
@@ -87,13 +92,17 @@ export const loop = function(): void {
 		if (spawn && spawnRequest) {
 			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable);
 			let memory: {role: string} = spawnRequest.memory;
-			spawn.createCreep(body, undefined, memory);
+			let result = spawn.createCreep(body, undefined, memory);
+			if (typeof(result) == 'string') {
+				let pos = new RoomPosition(spawn.pos.x + 1, spawn.pos.y, room.name);
+				room.visual.text(memory.role, pos);
+			}
 		}
+
+		//tick towers
+		//TODO: write
 	});
 
-
-	//tick towers
-	//TODO: write
 
 
 

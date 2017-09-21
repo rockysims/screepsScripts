@@ -1,20 +1,18 @@
 import Log from "util/Log";
 import Util from "util/Util";
 import Action from "util/Action";
-import getAll from 'getAll';
+import All from 'All';
 import SpawnRequest from 'SpawnRequest';
+import Mem from "util/Mem";
+
+//TODO: reverse container triggers miner to miner triggers contains (so miner can be built first)
 
 export default class MinerLogic {
 	static onTick() {
-		let all = getAll();
-
-		all.rooms.forEach((room: Room) => {
+		All.rooms().forEach((room: Room) => {
 			if (Util.costOf([WORK, WORK, WORK, WORK, WORK, MOVE]) <= room.energyCapacityAvailable) {
 				//calc minerCount
-				let creepsInRoom = all.creeps
-					.filter((creep: Creep) => creep.room.name == room.name);
-				let countByRole: {[role: string]: number} = Util.countByRole(creepsInRoom);
-				let minerCount: number = countByRole['miner'] || 0;
+				let minerCount: number = Util.countByRoleInRoom('miner', room);
 
 				//fill sourcesWithContainerOrSite & sourcesWithoutContainer[]
 				let sourcesWithoutContainerOrSite: Source[] = [];
@@ -44,9 +42,7 @@ export default class MinerLogic {
 				let enoughMiners = sourcesWithContainerOrSite.length <= minerCount;
 				if (enoughMiners && sourcesWithoutContainerOrSite.length > 0) {
 					//place container next to sourcesWithoutContainer[nearest to spawn]
-					let spawn = all.spawns
-						.filter((spawn: Spawn) => spawn.room.name == room.name)
-						[0];
+					let spawn = All.spawnsIn(room)[0];
 					if (spawn) {
 						let source = spawn.pos.findClosestByPath(sourcesWithoutContainerOrSite, {
 							ignoreCreeps: true
@@ -54,13 +50,40 @@ export default class MinerLogic {
 						let tilesBySource: RoomPosition[] = Util
 							.getAdjacent8(source.pos)
 							.filter((pos: RoomPosition) => Util.isBuildable([pos]));
-						let posBySource = source.pos.findClosestByPath(tilesBySource, {
+						let posBySource = spawn.pos.findClosestByPath(tilesBySource, {
 							ignoreCreeps: true
 						});
 
 						if (posBySource) {
 							room.createConstructionSite(posBySource, STRUCTURE_CONTAINER);
-							//room.visual.circle(posBySource);
+							let containerSite: ConstructionSite|undefined = room.lookForAt<ConstructionSite>(LOOK_CONSTRUCTION_SITES, posBySource)[0];
+							if (containerSite) {
+
+
+
+
+								//nice because container removed is handled automatically
+								Mem.byId(containerSite)['isInputContainer'] = true;
+
+								//nice because transition from construction site to container is handled automatically
+								Mem.byPos(containerSite)['isInputContainer'] = true;
+
+								//solves transition from site to built
+								//gives an efficient way to loop over room's inputs
+								//remove invalid inputs while reading list
+
+								//let memPositions: RoomPosition[] = Mem.getOrPut(room.name + ':inputStructurePositions', []);
+								//memPositions.push(containerSite.pos);
+
+								//or
+
+								let inputsKey = 'inputStructurePositions';
+								room.memory[inputsKey] = room.memory[inputsKey] || [];
+								let inputs: RoomPosition[] = room.memory[inputsKey];
+								inputs.push(containerSite.pos);
+
+
+							}
 						} else {
 							Log.error('MinerLogic::onTick() failed to find posBySource.');
 						}
@@ -78,7 +101,7 @@ export default class MinerLogic {
 		//try to set mem['sourceId'] && source
 		if (!mem['sourceId']) {
 			//fill minersInRoom[]
-			let minersInRoom: Creep[] = Util
+			let minersInRoom: Creep[] = All
 				.creepsIn(creep.room)
 				.filter((crp) => crp.memory.role == 'miner');
 
@@ -106,7 +129,7 @@ export default class MinerLogic {
 			if (target) {
 				mem['targetId'] = target.id;
 			} else {
-				Log.error('MinerLogic::run() failed to find target.');
+				Log.warn('MinerLogic::run() failed to find target.');
 			}
 		}
 		let target: Structure|undefined = Game.getObjectById(mem['targetId']) || undefined;
@@ -124,10 +147,7 @@ export default class MinerLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		let all = getAll();
-
-		let creepsInRoom = all.creeps
-			.filter((creep: Creep) => creep.room.name == room.name);
+		let creepsInRoom = All.creepsIn(room);
 		let countByRole: {[role: string]: number} = Util.countByRole(creepsInRoom);
 		let minerCount: number = countByRole['miner'] || 0;
 

@@ -1,9 +1,17 @@
-import getAll from 'getAll';
 import Log from "util/Log";
+import All from "All";
 
 export default class Util {
 	static costOf(bodyParts: Array<string>): number {
 		return bodyParts.reduce((carry: number, bodyPart: string) => carry + BODYPART_COST[bodyPart], 0);
+	}
+
+	static generateBodyFromSet(set: string[], energyAvailable: number) {
+		const body = new Array(Math.floor(energyAvailable / Util.costOf(set)))
+			.fill(set)
+			.reduce((carry, s) => carry.concat(s), [])
+			.sort((a: string, b: string) => set.indexOf(a) - set.indexOf(b));
+		return body;
 	}
 
 	static countByRole(creeps: Array<Creep>): {[role: string]: number} {
@@ -16,16 +24,8 @@ export default class Util {
 		return countByRole;
 	}
 
-	static creepsIn(room: Room): Creep[] {
-		let all = getAll();
-		return all.creeps
-			.filter((creep: Creep) => creep.room.name == room.name);
-	}
-
-	static spawnsIn(room: Room): Spawn[] {
-		let all = getAll();
-		return all.spawns
-			.filter((spawn: Spawn) => spawn.room.name == room.name);
+	static countByRoleInRoom(role: string, room: Room): number {
+		return Util.countByRole(All.creepsIn(room))[role] || 0;
 	}
 
 	static maxExtensionCount(room: Room): number {
@@ -73,36 +73,42 @@ export default class Util {
 		return buildable;
 	}
 
-	static getAdjacent4(pos: RoomPosition): RoomPosition[] {
+	static getAdjacent(pos: RoomPosition, deltas: Array<{ x: number; y: number }>): RoomPosition[] {
 		let room = Game.rooms[pos.roomName];
-		if (room) {
-			let adjacents: (RoomPosition|undefined)[] = [];
-			adjacents.push(room.getPositionAt(pos.x + 1, pos.y) || undefined);
-			adjacents.push(room.getPositionAt(pos.x - 1, pos.y) || undefined);
-			adjacents.push(room.getPositionAt(pos.x, pos.y + 1) || undefined);
-			adjacents.push(room.getPositionAt(pos.x, pos.y - 1) || undefined);
-			return <RoomPosition[]>adjacents.filter((pos: RoomPosition) => !!pos);
-		}
+		return room
+			? deltas
+				.map(delta => room.getPositionAt(pos.x + delta.x, pos.y + delta.y) || undefined)
+				.filter(pos => !!pos) as RoomPosition[]
+			: [];
+	}
 
-		return [];
+	static getAdjacent4(pos: RoomPosition): RoomPosition[] {
+		return Util.getAdjacent(
+			pos,
+			[
+				{ x: +1, y:  0},
+				{ x: -1, y:  0},
+				{ x:  0, y: +1},
+				{ x:  0, y: -1},
+			]
+		);
 	}
 
 	static getAdjacent8(pos: RoomPosition): RoomPosition[] {
-		let room = Game.rooms[pos.roomName];
-		if (room) {
-			let adjacents: (RoomPosition|undefined)[] = [];
-			adjacents.push(room.getPositionAt(pos.x + 1, pos.y) || undefined);
-			adjacents.push(room.getPositionAt(pos.x - 1, pos.y) || undefined);
-			adjacents.push(room.getPositionAt(pos.x, pos.y + 1) || undefined);
-			adjacents.push(room.getPositionAt(pos.x, pos.y - 1) || undefined);
-			adjacents.push(room.getPositionAt(pos.x + 1, pos.y + 1) || undefined);
-			adjacents.push(room.getPositionAt(pos.x + 1, pos.y - 1) || undefined);
-			adjacents.push(room.getPositionAt(pos.x - 1, pos.y + 1) || undefined);
-			adjacents.push(room.getPositionAt(pos.x - 1, pos.y - 1) || undefined);
-			return <RoomPosition[]>adjacents.filter((pos: RoomPosition) => !!pos);
-		}
+		return Util.getAdjacent(
+			pos,
+			[
+				{ x: +1, y:  0},
+				{ x: -1, y:  0},
+				{ x:  0, y: +1},
+				{ x:  0, y: -1},
 
-		return [];
+				{ x: -1, y: -1},
+				{ x: -1, y: +1},
+				{ x: +0, y: -1},
+				{ x: +0, y: +1},
+			]
+		);
 	}
 
 	static getNthClosest(origin: RoomPosition, n: number): RoomPosition|undefined {

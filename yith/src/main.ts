@@ -1,12 +1,13 @@
 /// <reference path="../../typings/index.d.ts" />
 
 import Log from 'util/Log';
-import getAll from 'getAll';
 import SpawnRequest from 'SpawnRequest';
 import RoomLogic from 'logic/RoomLogic';
 import GeneralistLogic from 'logic/GeneralistLogic';
 import BuilderLogic from 'logic/BuilderLogic';
 import MinerLogic from 'logic/MinerLogic';
+import Mem from "util/Mem";
+import All from "All";
 //import carrierLogic from 'logic/CarrierLogic';
 //import upgraderLogic from 'logic/UpgraderLogic';
 //import repairerLogic from 'logic/RepairerLogic';
@@ -16,27 +17,17 @@ import MinerLogic from 'logic/MinerLogic';
 //	for example if Action.emptyEnergy() target chosen, stick with that target for at least 5 ticks
 //		instead of 5 ticks maybe try until 5 failures in a row? (failures like can't find path to target)
 //TODO: use Mem to avoid recalculating so much in RoleLogic classes?
+//TODO: use Mem to add priority levels to construction sites? (use to prioritize miner containers over extensions)
+//TODO: only spawn miners (and build miner containers) if notFullMinerContainers > 0 || minerContainers == 0
+
+console.log('Init Main');
 
 export const loop = function(): void {
 	if (Game.time % 5 == 0) {
 		Log.log(Game.time + ' -----------------');
 	}
 
-	Object.keys(Memory.creeps).forEach((name) => {
-		if (!Game.creeps[name]) {
-			console.log('Clearing non-existing creep memory: ' + name + ' (' + Memory.creeps[name].role + ')');
-			delete Memory.creeps[name];
-		}
-	});
-
-	Object.keys(Memory.rooms).forEach((name) => {
-		if (!Game.rooms[name]) {
-			console.log('Clearing non-existing room memory: ' + name);
-			delete Memory.rooms[name];
-		}
-	});
-
-	let all = getAll();
+	Mem.onTick();
 
 	RoomLogic.onTick();
 	GeneralistLogic.onTick();
@@ -47,7 +38,7 @@ export const loop = function(): void {
 	//RepairerLogic.onTick();
 
 	//tick multi room creeps
-	//all.creeps.forEach((creep: Creep) => {
+	//All.creeps().forEach((creep: Creep) => {
 	//	let role = creep.memory.role;
 	//	if (role == 'a') aLogic.run(creep);
 	//	else if (role == 'b') bLogic.run(creep);
@@ -56,13 +47,11 @@ export const loop = function(): void {
 	//});
 
 	//tick rooms
-	all.rooms.forEach((room: Room) => {
+	All.rooms().forEach((room: Room) => {
 		RoomLogic.run(room);
 
-		let creeps = all.creeps.filter((creep: Creep) => creep.room.name == room.name);
-
 		//tick single room creeps
-		creeps.forEach((creep: Creep) => {
+		All.creepsIn(room).forEach((creep: Creep) => {
 			let role = creep.memory.role;
 			if (role == 'generalist') GeneralistLogic.run(creep);
 			else if (role == 'builder') BuilderLogic.run(creep);
@@ -86,8 +75,9 @@ export const loop = function(): void {
 			.sort((a, b) => a.priority - b.priority) //lowest to highest
 			.pop();
 
-		let spawn: StructureSpawn | undefined = all.spawns
-			.filter((spawn: StructureSpawn) => spawn.room.name == room.name && !spawn.spawning)
+		let spawn: StructureSpawn | undefined = All
+			.spawnsIn(room)
+			.filter((spawn: StructureSpawn) => !spawn.spawning)
 			.sort((a: Spawn, b: StructureSpawn) => a.energy - b.energy) //lowest to highest
 			.pop();
 
@@ -168,25 +158,3 @@ export const loop = function(): void {
 
 
 
-
-
-
-
-
-//TODO: move to it's own file?
-//class Mem {
-//	static onTick() {
-//		Memory['byId'] = Memory['byId'] || {};
-//		Object.keys(Memory['byId']).forEach((id: string) => {
-//			if (!Game.getObjectById(id)) {
-//				console.log("Clearing non-existing memory['byId']: " + id);
-//				delete Memory['byId'][id];
-//			}
-//		});
-//	}
-//
-//	static byId(id: string): {} {
-//		Memory['byId'] = Memory['byId'] || {};
-//		return Memory['byId'][id];
-//	}
-//}

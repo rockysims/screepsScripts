@@ -1,5 +1,8 @@
 import Action from "util/Action";
 import SpawnRequest from 'SpawnRequest';
+import Util from "util/Util";
+import Mem from "util/Mem";
+import All from 'All';
 
 export default class CarrierLogic {
 	static onTick() {
@@ -35,6 +38,29 @@ export default class CarrierLogic {
 //		if (any input container > 75% full && any output container < 75% full)
 //			request spawn carrier (priority based on % of input containers > 75% full)
 //		maybe use Mem.byId(structureId).isInput/.isOutput
+
+
+
+
+
+		//TODO: fix issue where container site has isInputContainer flag but built container doesn't (untested but almost certain an issue)
+		All.containersIn(room).forEach((container: Container) => {
+			let isInputContainer: boolean = Mem.byId(container)['isInputContainer'];
+			console.log('isInputContainer: ', isInputContainer);
+		});
+
+		let priority = 0; //TODO: set
+
+		let spawnRequest: SpawnRequest = {
+			priority: priority,
+			generateBody: (energyAvailable: number): string[] => {
+				return Util.generateBodyFromSet([CARRY, MOVE], energyAvailable);
+			},
+			memory: {role: 'carrier'}
+		};
+		console.log('spawnRequest: ', spawnRequest);
+
+
 
 		return {
 			priority: 0,

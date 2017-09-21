@@ -1,7 +1,7 @@
 import Util from "util/Util";
 import Action from "util/Action";
-import getAll from 'getAll';
 import SpawnRequest from 'SpawnRequest';
+import All from "All";
 
 export default class GeneralistLogic {
 	static onTick() {}
@@ -29,7 +29,7 @@ export default class GeneralistLogic {
 			let roomCtrl: Controller|undefined = creep.room.controller;
 
 			if (target) Action.deliver(creep, target);
-			else if (roomCtrl && roomCtrl.ticksToDowngrade < 1000) Action.upgrade(creep, roomCtrl);
+			else if (roomCtrl && roomCtrl.ticksToDowngrade < 4700) Action.upgrade(creep, roomCtrl);
 			else if (constructionSite) Action.build(creep, constructionSite);
 			else if (roomCtrl) Action.upgrade(creep, roomCtrl);
 			else Action.idle(creep);
@@ -46,11 +46,7 @@ export default class GeneralistLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		let all = getAll();
-
-		let creepsInRoom = all.creeps
-			.filter((creep: Creep) => creep.room.name == room.name);
-		let countByRole: {[role: string]: number} = Util.countByRole(creepsInRoom);
+		let countByRole: {[role: string]: number} = Util.countByRole(All.creepsIn(room));
 		let requestSpawn = (countByRole['generalist'] || 0) < 2
 			&& (
 				(countByRole['miner'] || 0) < 1
@@ -60,8 +56,8 @@ export default class GeneralistLogic {
 		if (requestSpawn) {
 			return {
 				priority: 8,
-				generateBody: (): string[] => {
-					return [WORK, CARRY, MOVE, MOVE];
+				generateBody: (energyAvailable: number): string[] => {
+					return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], energyAvailable);
 				},
 				memory: {role: 'generalist'}
 			};

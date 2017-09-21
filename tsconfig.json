@@ -2,7 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es5",
+    "target": "es6",
     "noImplicitAny": true,
     "removeComments": true,
     "noEmitOnError": true,
@@ -15,6 +15,12 @@
     "sourceMap": true,
     "baseUrl": "./yith/src/"
   },
+  "lib": [
+    "es5",
+    "es6",
+    "es7",
+    "esnext"
+  ],
   "include": [
     "yith/src/**/*",
     "yith/typings/**/*.d.ts"

@@ -2,6 +2,11 @@ import Util from "util/Util";
 import Action from "util/Action";
 import GeneralistLogic from 'logic/GeneralistLogic';
 import SpawnRequest from 'SpawnRequest';
+import All from "All";
+
+interface BuilderCreepMemory {
+	building: boolean;
+}
 
 export default class BuilderLogic {
 	static onTick() {
@@ -9,15 +14,15 @@ export default class BuilderLogic {
 	}
 
 	static run(creep: Creep) {
-		let constructionSite: ConstructionSite = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
+		const constructionSite: ConstructionSite = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
 		if (!constructionSite) {
 			GeneralistLogic.run(creep);
 			return;
 		}
 
-		let creepEnergy = creep.carry.energy || 0;
-		let mem = creep.memory;
-		let origMemBuilding = mem.building;
+		const creepEnergy = creep.carry.energy || 0;
+		const mem: BuilderCreepMemory = creep.memory;
+		const origMemBuilding = mem.building;
 
 		if (mem.building) {
 			if (constructionSite) Action.build(creep, constructionSite);
@@ -40,7 +45,7 @@ export default class BuilderLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		let countByRole = Util.countByRole(Util.creepsIn(room));
+		let countByRole = Util.countByRole(All.creepsIn(room));
 		let builderCount = countByRole['builder'] || 0;
 		let constructionSiteCount = room.find(FIND_CONSTRUCTION_SITES).length;
 
@@ -53,15 +58,7 @@ export default class BuilderLogic {
 			return {
 				priority: priority,
 				generateBody: (availableEnergy: number): string[] => {
-					let set = [WORK, CARRY, MOVE, MOVE];
-					let setCost = Util.costOf(set);
-					let body = [];
-
-					while (Util.costOf(body) + setCost <= availableEnergy) {
-						body.push(... set);
-					}
-
-					return body;
+					return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], availableEnergy);
 				},
 				memory: {role: 'builder'}
 			};

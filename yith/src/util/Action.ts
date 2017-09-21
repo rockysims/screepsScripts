@@ -4,16 +4,16 @@ export default class Action {
 		if (result == ERR_NOT_IN_RANGE) {
 			creep.moveTo(source, {visualizePathStyle: {stroke: '#ffff00'}});
 		} else if (result != 0) {
-			creep.say('#' + result);
+			creep.say('#' + result + ' harvest');
 		}
 	}
 
 	static collect(creep: Creep, container: Container) {
-		let result: number = creep.transfer(container, RESOURCE_ENERGY);
+		let result: number = creep.withdraw(container, RESOURCE_ENERGY);
 		if (result == ERR_NOT_IN_RANGE) {
 			creep.moveTo(container, {visualizePathStyle: {stroke: '#00ffff'}});
 		} else if (result != 0) {
-			creep.say('#' + result);
+			creep.say('#' + result + ' collect');
 		}
 	}
 
@@ -22,7 +22,7 @@ export default class Action {
 		if (result == ERR_NOT_IN_RANGE) {
 			creep.moveTo(resource, {visualizePathStyle: {stroke: '#00ffff'}});
 		} else if (result != 0) {
-			creep.say('#' + result);
+			creep.say('#' + result + ' pickup');
 		}
 	}
 
@@ -31,7 +31,7 @@ export default class Action {
 		if (result == ERR_NOT_IN_RANGE) {
 			creep.moveTo(structure, {visualizePathStyle: {stroke: '#00ff00'}});
 		} else if (result != 0) {
-			creep.say('#' + result);
+			creep.say('#' + result + ' deliver');
 		}
 	}
 
@@ -40,7 +40,7 @@ export default class Action {
 		if (result == ERR_NOT_IN_RANGE) {
 			creep.moveTo(controller, {visualizePathStyle: {stroke: '#00ff00'}});
 		} else if (result != 0) {
-			creep.say('#' + result);
+			creep.say('#' + result + ' upgrade');
 		}
 	}
 
@@ -49,7 +49,7 @@ export default class Action {
 		if (result == ERR_NOT_IN_RANGE) {
 			creep.moveTo(target, {visualizePathStyle: {stroke: '#5555ff'}});
 		} else if (result != 0) {
-			creep.say('#' + result);
+			creep.say('#' + result + ' build');
 		}
 	}
 
@@ -77,12 +77,12 @@ export default class Action {
 		let dropped: Resource = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
 			filter: (resource: Resource) =>
 				resource.resourceType == RESOURCE_ENERGY
-				&& resource.amount >= creep.carryCapacity
+				&& resource.amount >= creep.carryCapacity / 2
 		});
 		let container: Container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
 			filter: (structure: Structure) => {
 				if (structure.structureType == STRUCTURE_CONTAINER) {
-					return (<Container>structure).store >= 0;
+					return (<Container>structure).store[RESOURCE_ENERGY] > 0;
 				} else {
 					return false;
 				}
@@ -91,6 +91,12 @@ export default class Action {
 		let source: Source = creep.pos.findClosestByPath(FIND_SOURCES, {
 			filter: (source: Source) => source.energy >= 0
 		});
+
+		//TODO: sort options by range multiplied by
+		//	drops: *1
+		//	containers: *4
+		//	storages: *4
+		//	sources: *8
 
 		if (dropped) {
 			Action.pickup(creep, dropped);

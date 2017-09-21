@@ -1,6 +1,7 @@
 import Log from "util/Log";
 import Util from "util/Util";
 import SpawnRequest from 'SpawnRequest';
+import All from "All";
 
 export default class RoomLogic {
 	static onTick() {
@@ -21,7 +22,7 @@ export default class RoomLogic {
 				let pos: RoomPosition|undefined;
 
 				//pos = closest tile to spawn where is plains and all 4 sides are plains|swamp
-				let spawn: Spawn = Util.spawnsIn(room)[0];
+				let spawn: Spawn = All.spawnsIn(room)[0];
 				if (spawn) {
 					let origin: RoomPosition = spawn.pos;
 					let n = 1;

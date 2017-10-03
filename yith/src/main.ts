@@ -6,6 +6,7 @@ import RoomLogic from 'logic/RoomLogic';
 import GeneralistLogic from 'logic/GeneralistLogic';
 import BuilderLogic from 'logic/BuilderLogic';
 import MinerLogic from 'logic/MinerLogic';
+import TowerLogic from 'logic/TowerLogic';
 import Mem from "util/Mem";
 import All from "All";
 //import carrierLogic from 'logic/CarrierLogic';
@@ -19,6 +20,8 @@ import All from "All";
 //TODO: use Mem to avoid recalculating so much in RoleLogic classes?
 //TODO: use Mem to add priority levels to construction sites? (use to prioritize miner containers over extensions)
 //TODO: only spawn miners (and build miner containers) if notFullMinerContainers > 0 || minerContainers == 0
+
+//TODO: fix bug where generalist won't respawn because empty extensions not being refilled due to no generalist
 
 console.log('Init Main');
 
@@ -36,6 +39,8 @@ export const loop = function(): void {
 	//CarrierLogic.onTick();
 	//UpgraderLogic.onTick();
 	//RepairerLogic.onTick();
+
+	TowerLogic.onTick();
 
 	//tick multi room creeps
 	//All.creeps().forEach((creep: Creep) => {
@@ -61,6 +66,8 @@ export const loop = function(): void {
 			//else if (role == 'repairer') RepairerLogic.run(creep);
 		});
 
+		TowerLogic.run(room);
+
 		//fill spawnRequests[]
 		let spawnRequests: SpawnRequest[] = [];
 		spawnRequests.push(GeneralistLogic.generateSpawnRequest(room));
@@ -70,10 +77,13 @@ export const loop = function(): void {
 		//spawnRequests.push(UpgraderLogic.generateSpawnRequest(room));
 		//spawnRequests.push(RepairerLogic.generateSpawnRequest(room));
 
-		let spawnRequest: SpawnRequest | undefined = spawnRequests
+		spawnRequests = spawnRequests
 			.filter(sr => sr.priority > 0) //0 priority means ignore
-			.sort((a, b) => a.priority - b.priority) //lowest to highest
-			.pop();
+			.sort((a, b) => a.priority - b.priority); //lowest to highest
+
+		if (spawnRequests.length > 0) Log.log('spawnRequests: ' + JSON.stringify(spawnRequests));
+
+		let spawnRequest: SpawnRequest | undefined = spawnRequests.pop();
 
 		let spawn: StructureSpawn | undefined = All
 			.spawnsIn(room)
@@ -83,12 +93,14 @@ export const loop = function(): void {
 
 		//try to use spawn to execute spawnRequest
 		if (spawn && spawnRequest) {
+			console.log('spawnRequest: ', spawnRequest);
 			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable);
 			let memory: {role: string} = spawnRequest.memory;
 			let result = spawn.createCreep(body, undefined, memory);
 			if (typeof(result) == 'string') {
 				let pos = new RoomPosition(spawn.pos.x + 1, spawn.pos.y, room.name);
 				room.visual.text(memory.role, pos);
+				console.log('Spawning @' + spawnRequest.priority + ' ' + memory.role + ': ' + body);
 			}
 		}
 

@@ -94,9 +94,9 @@ export default class Util {
 		);
 	}
 
-	static getAdjacent8(pos: RoomPosition): RoomPosition[] {
+	static getAdjacent8(position: RoomPosition|{pos: RoomPosition}): RoomPosition[] {
 		return Util.getAdjacent(
-			pos,
+			Util.posOf(position),
 			[
 				{ x: +1, y:  0},
 				{ x: -1, y:  0},
@@ -154,5 +154,9 @@ export default class Util {
 		} else {
 			return origin;
 		}
+	}
+
+	static posOf(position: RoomPosition|{pos: RoomPosition}): RoomPosition {
+		return (typeof position == 'object')?(<any>position)['pos']:position;
 	}
 }

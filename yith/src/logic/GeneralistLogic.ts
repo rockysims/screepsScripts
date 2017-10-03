@@ -29,7 +29,7 @@ export default class GeneralistLogic {
 			let roomCtrl: Controller|undefined = creep.room.controller;
 
 			if (target) Action.deliver(creep, target);
-			else if (roomCtrl && roomCtrl.ticksToDowngrade < 4700) Action.upgrade(creep, roomCtrl);
+			else if (roomCtrl && roomCtrl.ticksToDowngrade < CONTROLLER_DOWNGRADE[roomCtrl.level] - 500) Action.upgrade(creep, roomCtrl);
 			else if (constructionSite) Action.build(creep, constructionSite);
 			else if (roomCtrl) Action.upgrade(creep, roomCtrl);
 			else Action.idle(creep);

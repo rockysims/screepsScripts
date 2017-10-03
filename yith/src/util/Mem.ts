@@ -1,13 +1,13 @@
 export default class Mem {
 	static onTick() {
-		Object.keys(Memory.creeps).forEach((name) => {
+		Object.keys(Memory.creeps || {}).forEach((name) => {
 			if (!Game.creeps[name]) {
 				console.log('Clearing non-existing creep memory: ' + name + ' (' + Memory.creeps[name].role + ')');
 				delete Memory.creeps[name];
 			}
 		});
 
-		Object.keys(Memory.rooms).forEach((name) => {
+		Object.keys(Memory.rooms || {}).forEach((name) => {
 			if (!Game.rooms[name]) {
 				console.log('Clearing non-existing room memory: ' + name);
 				delete Memory.rooms[name];

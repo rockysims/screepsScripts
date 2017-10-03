@@ -1,8 +1,17 @@
+import All from 'All';
+
 export default class Action {
+	static moveTo(creep: Creep, target: RoomPosition|{pos: RoomPosition}, colorCode: string|undefined) {
+		creep.moveTo(target, {
+			reusePath: Math.min(Math.floor(All.creeps().length * 0.4), 5),
+			visualizePathStyle: {stroke: colorCode || '#ffffff'}
+		});
+	}
+
 	static harvest(creep: Creep, source: Source) {
 		let result: number = creep.harvest(source);
 		if (result == ERR_NOT_IN_RANGE) {
-			creep.moveTo(source, {visualizePathStyle: {stroke: '#ffff00'}});
+			Action.moveTo(creep, source, '#ffff00');
 		} else if (result != 0) {
 			creep.say('#' + result + ' harvest');
 		}
@@ -11,7 +20,7 @@ export default class Action {
 	static collect(creep: Creep, container: Container) {
 		let result: number = creep.withdraw(container, RESOURCE_ENERGY);
 		if (result == ERR_NOT_IN_RANGE) {
-			creep.moveTo(container, {visualizePathStyle: {stroke: '#00ffff'}});
+			Action.moveTo(creep, container, '#00ffff');
 		} else if (result != 0) {
 			creep.say('#' + result + ' collect');
 		}
@@ -20,7 +29,7 @@ export default class Action {
 	static pickup(creep: Creep, resource: Resource) {
 		let result: number = creep.pickup(resource);
 		if (result == ERR_NOT_IN_RANGE) {
-			creep.moveTo(resource, {visualizePathStyle: {stroke: '#00ffff'}});
+			Action.moveTo(creep, resource, '#00ffff');
 		} else if (result != 0) {
 			creep.say('#' + result + ' pickup');
 		}
@@ -29,7 +38,7 @@ export default class Action {
 	static deliver(creep: Creep, structure: Structure) {
 		let result: number = creep.transfer(structure, RESOURCE_ENERGY);
 		if (result == ERR_NOT_IN_RANGE) {
-			creep.moveTo(structure, {visualizePathStyle: {stroke: '#00ff00'}});
+			Action.moveTo(creep, structure, '#00ff00');
 		} else if (result != 0) {
 			creep.say('#' + result + ' deliver');
 		}
@@ -38,7 +47,7 @@ export default class Action {
 	static upgrade(creep: Creep, controller: Controller) {
 		let result: number = creep.upgradeController(controller);
 		if (result == ERR_NOT_IN_RANGE) {
-			creep.moveTo(controller, {visualizePathStyle: {stroke: '#00ff00'}});
+			Action.moveTo(creep, controller, '#00ff00');
 		} else if (result != 0) {
 			creep.say('#' + result + ' upgrade');
 		}
@@ -47,14 +56,10 @@ export default class Action {
 	static build(creep: Creep, target: ConstructionSite) {
 		let result: number = creep.build(target);
 		if (result == ERR_NOT_IN_RANGE) {
-			creep.moveTo(target, {visualizePathStyle: {stroke: '#5555ff'}});
+			Action.moveTo(creep, target, '#5555ff');
 		} else if (result != 0) {
 			creep.say('#' + result + ' build');
 		}
-	}
-
-	static moveTo(creep: Creep, target: RoomPosition|{pos: RoomPosition}, colorCode: string|undefined) {
-		creep.moveTo(target, {visualizePathStyle: {stroke: colorCode || '#ffffff'}});
 	}
 
 	static idle(creep: Creep) {
@@ -63,9 +68,9 @@ export default class Action {
 			filter: (flag: Flag) => flag.name == 'Idle1'
 		})[0];
 		if (idleFlag instanceof Flag) {
-			creep.moveTo(idleFlag, {visualizePathStyle: {stroke: '#ff0000'}})
+			Action.moveTo(creep, idleFlag, '#ff0000');
 		} else if (creep.room.controller) {
-			creep.moveTo(creep.room.controller, {visualizePathStyle: {stroke: '#ff0000'}})
+			Action.moveTo(creep, creep.room.controller, '#ff0000');
 		}
 	}
 
@@ -77,12 +82,12 @@ export default class Action {
 		let dropped: Resource = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
 			filter: (resource: Resource) =>
 				resource.resourceType == RESOURCE_ENERGY
-				&& resource.amount >= creep.carryCapacity / 2
+				&& resource.amount >= creep.carryCapacity * 0.75
 		});
 		let container: Container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
 			filter: (structure: Structure) => {
 				if (structure.structureType == STRUCTURE_CONTAINER) {
-					return (<Container>structure).store[RESOURCE_ENERGY] > 0;
+					return (<Container>structure).store[RESOURCE_ENERGY] >= creep.carryCapacity / 2;
 				} else {
 					return false;
 				}
@@ -97,6 +102,10 @@ export default class Action {
 		//	containers: *4
 		//	storages: *4
 		//	sources: *8
+
+		//TODO: make choice sticky until done or can't do
+		//	save in creep.memory.fillEnergyTargetId?
+		//	example of can't do: no path to target
 
 		if (dropped) {
 			Action.pickup(creep, dropped);

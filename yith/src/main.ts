@@ -33,14 +33,14 @@ export const loop = function(): void {
 	Mem.onTick();
 
 	RoomLogic.onTick();
+	TowerLogic.onTick();
+
 	GeneralistLogic.onTick();
 	BuilderLogic.onTick();
 	MinerLogic.onTick();
 	//CarrierLogic.onTick();
 	//UpgraderLogic.onTick();
 	//RepairerLogic.onTick();
-
-	TowerLogic.onTick();
 
 	//tick multi room creeps
 	//All.creeps().forEach((creep: Creep) => {
@@ -54,6 +54,7 @@ export const loop = function(): void {
 	//tick rooms
 	All.rooms().forEach((room: Room) => {
 		RoomLogic.run(room);
+		TowerLogic.run(room);
 
 		//tick single room creeps
 		All.creepsIn(room).forEach((creep: Creep) => {
@@ -65,8 +66,6 @@ export const loop = function(): void {
 			//else if (role == 'upgrader') UpgraderLogic.run(creep);
 			//else if (role == 'repairer') RepairerLogic.run(creep);
 		});
-
-		TowerLogic.run(room);
 
 		//fill spawnRequests[]
 		let spawnRequests: SpawnRequest[] = [];
@@ -103,9 +102,6 @@ export const loop = function(): void {
 				console.log('Spawning @' + spawnRequest.priority + ' ' + memory.role + ': ' + body);
 			}
 		}
-
-		//tick towers
-		//TODO: write
 	});
 
 

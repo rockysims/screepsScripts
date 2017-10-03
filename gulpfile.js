@@ -18,6 +18,10 @@ gulp.task('clean:sim', function() {
 	return del('screeps.com/sim/**/*');
 });
 
+gulp.task('clean:world', function() {
+	return del('screeps.com/world/**/*');
+});
+
 gulp.task("tsify", function () {
 	return gulp.src('yith/src/**/*.ts')
 		.pipe(tsProject())
@@ -52,7 +56,14 @@ gulp.task('deploy:sim', function() {
 	return gulp.src("yith/dist/*.js")
 		.pipe(gulp.dest("screeps.com/sim"));
 });
-
 gulp.task('sim', function(done) {
 	sequence('default', 'clean:sim', 'deploy:sim', done);
+});
+
+gulp.task('deploy:world', function() {
+	return gulp.src("yith/dist/*.js")
+		.pipe(gulp.dest("screeps.com/world"));
+});
+gulp.task('world', function(done) {
+	sequence('default', 'clean:world', 'deploy:world', done);
 });

@@ -1,3 +1,4 @@
+import Log from 'util/Log';
 import All from 'All';
 
 export default class Action {
@@ -77,14 +78,17 @@ export default class Action {
 	//---//
 
 	static fillEnergy(creep: Creep) {
-		let creepEnergy = creep.carry.energy || 0;
+		const targets: (Resource|Container|Source)[] = [];
 
-		let dropped: Resource = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, {
+		//targets += energy drops
+		targets.push(... creep.room.find(FIND_DROPPED_RESOURCES, {
 			filter: (resource: Resource) =>
 				resource.resourceType == RESOURCE_ENERGY
 				&& resource.amount >= creep.carryCapacity * 0.75
-		});
-		let container: Container = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+		}) as Resource[]);
+
+		//targets += containers
+		targets.push(... creep.room.find(FIND_STRUCTURES, {
 			filter: (structure: Structure) => {
 				if (structure.structureType == STRUCTURE_CONTAINER) {
 					return (<Container>structure).store[RESOURCE_ENERGY] >= creep.carryCapacity / 2;
@@ -92,10 +96,27 @@ export default class Action {
 					return false;
 				}
 			}
-		});
-		let source: Source = creep.pos.findClosestByPath(FIND_SOURCES, {
+		}) as Container[]);
+
+		//targets += sources
+		targets.push(... creep.room.find(FIND_SOURCES, {
 			filter: (source: Source) => source.energy >= 0
-		});
+		}) as Source[]);
+
+		const target: Resource|Container|Source = creep.pos.findClosestByPath(targets);
+		if (target) {
+			if ((target as any)['resourceType']) {
+				Action.pickup(creep, target as Resource);
+			} else if ((target as any)['ticksToDecay']) {
+				Action.collect(creep, target as Container);
+			} else if ((target as any)['ticksToRegeneration']) {
+				Action.harvest(creep, target as Source);
+			} else {
+				Log.error('Action::fillEnergy() target truthy but does not match dropped/container/source');
+			}
+		} else {
+			creep.say('+energy?'); //can't find energy
+		}
 
 		//TODO: sort options by range multiplied by
 		//	drops: *1
@@ -106,20 +127,6 @@ export default class Action {
 		//TODO: make choice sticky until done or can't do
 		//	save in creep.memory.fillEnergyTargetId?
 		//	example of can't do: no path to target
-
-		if (dropped) {
-			Action.pickup(creep, dropped);
-		} else if (container) {
-			Action.collect(creep, container);
-		} else if (source) {
-			Action.harvest(creep, source);
-		} else if (creepEnergy > 0) {
-			creep.say('+energy?'); //can't find energy
-		}
-
-		if (creepEnergy >= creep.carryCapacity) {
-			creep.say('full'); //already full
-		}
 	}
 
 	static emptyEnergy(creep: Creep) {

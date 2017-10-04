@@ -1,31 +1,73 @@
 import SpawnRequest from 'SpawnRequest';
-import All from "All";
+import Util from 'util/Util';
+import Log from 'util/Log';
+import All from 'All';
 
-export default class RoomLogic {
+export default class TowerLogic {
 	static onTick() {
-		//no op
-	}
+		All.rooms().forEach((room) => {
+			let constructingTowerCount: number = All
+				.constructionSitesIn(room)
+				.filter((constructionSite: ConstructionSite) => constructionSite.structureType == STRUCTURE_TOWER)
+				.length;
 
-	static run(room: Room) {
-		All.towersIn(room).forEach((tower: Tower) => {
-			let closestHostile: Creep = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-			if (closestHostile) {
-				tower.attack(closestHostile);
-				Memory['attackCount'] = (Memory['attackCount'] || 0) + 1;
-			} else {
-				if (tower.energy > tower.energyCapacity - 250) {
-					let damagedStructures: Structure[] = tower.pos.findInRange(FIND_STRUCTURES, 10, {
-						filter: (structure: Structure) => structure.hits < structure.hitsMax
-					});
-					damagedStructures = damagedStructures.filter(s => s.hits < 1000000);
-					damagedStructures.sort((a, b) => a.hits - b.hits); //lowest first
-					let damagedStructure = damagedStructures[0];
-					if (damagedStructure) {
-						tower.repair(damagedStructure);
+			if (constructingTowerCount <= 0) {
+				let builtTowers: Tower[] = All.towersIn(room);
+				let maxTowers: number = Util.maxStructureCountIn(STRUCTURE_TOWER, room);
+				if (builtTowers.length < maxTowers) {
+					let pos: RoomPosition|undefined;
+
+					//pos = closest tile to spawn where is plains and all 4 sides are plains|swamp
+					let spawn: Spawn = All.spawnsIn(room)[0];
+					if (spawn) {
+						let origin: RoomPosition = spawn.pos;
+						let n = 1;
+						while (n != -1 && n < 150) {
+							let nthPos: RoomPosition|undefined = Util.getNthClosest(origin, n);
+							if (nthPos) {
+								if (Util.terrainMatch([nthPos], ['plain']) && Util.isBuildable([nthPos])) {
+									let sides = Util.getAdjacent4(nthPos);
+									if (Util.terrainMatch(sides, ['plain', 'swamp']) && Util.isBuildable(sides)) {
+										//found valid pos
+										pos = nthPos;
+										break;
+									}
+								}
+							}
+
+							n++;
+						}
+					}
+
+					if (pos) {
+						//place tower
+						room.createConstructionSite(pos, STRUCTURE_TOWER);
+					} else {
+						Log.warn('TowerLogic::onTick() failed to find pos to place tower. Room: ' + room.name);
 					}
 				}
 			}
 		});
+	}
+
+	static run(tower: Tower) {
+		let closestHostile: Creep = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+		if (closestHostile) {
+			tower.attack(closestHostile);
+			Memory['attackCount'] = (Memory['attackCount'] || 0) + 1;
+		} else {
+			if (tower.energy > tower.energyCapacity - 250) {
+				let damagedStructures: Structure[] = tower.pos.findInRange(FIND_STRUCTURES, 10, {
+					filter: (structure: Structure) => structure.hits < structure.hitsMax
+				});
+				damagedStructures = damagedStructures.filter(s => s.hits < 1000000);
+				damagedStructures.sort((a, b) => a.hits - b.hits); //lowest first
+				let damagedStructure = damagedStructures[0];
+				if (damagedStructure) {
+					tower.repair(damagedStructure);
+				}
+			}
+		}
 	}
 
 	static generateSpawnRequest(): SpawnRequest {
@@ -36,33 +78,3 @@ export default class RoomLogic {
 		};
 	}
 }
-
-
-
-//tick towers
-//for (let roomKey in Game.rooms) {
-//	let room = Game.rooms[roomKey];
-//	var towers = room.find(
-//		FIND_MY_STRUCTURES, {filter: {structureType: STRUCTURE_TOWER}}
-//	);
-//	for (let towerKey in towers) {
-//		let tower = towers[towerKey];
-//		let closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-//		if (closestHostile) {
-//			tower.attack(closestHostile);
-//			Memory.attackCount = (Memory.attackCount || 0) + 1;
-//		} else {
-//			if (tower.energy > tower.energyCapacity - 250) {
-//				let damagedStructures = tower.pos.findInRange(FIND_STRUCTURES, 10, {
-//					filter: (structure) => structure.hits < structure.hitsMax
-//				});
-//				damagedStructures = damagedStructures.filter(s => s.hits < 1000000);
-//				damagedStructures.sort((a, b) => a.hits - b.hits); //lowest first
-//				let damagedStructure = damagedStructures[0];
-//				if(damagedStructure) {
-//					tower.repair(damagedStructure);
-//				}
-//			}
-//		}
-//	}
-//}

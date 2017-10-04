@@ -6,6 +6,7 @@ interface AllCache {
 	towers?: Tower[]
 	structures?: Structure[]
 	containers?: Container[]
+	constructionSites?: ConstructionSite[]
 }
 
 export default class All {
@@ -117,6 +118,16 @@ export default class All {
 		return All
 			.creepsIn(room)
 			.filter((crp) => crp.memory.role == role);
+	}
+
+	static constructionSitesIn(room: Room): ConstructionSite[] {
+		All.ensureFreshCache();
+
+		if (!All.cache.constructionSites) {
+			All.cache.constructionSites = room.find(FIND_CONSTRUCTION_SITES);
+		}
+
+		return All.cache.constructionSites;
 	}
 
 	static sourcesIn(room: Room): Source[] {

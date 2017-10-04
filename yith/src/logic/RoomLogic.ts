@@ -17,7 +17,7 @@ export default class RoomLogic {
 			let builtExtensions: Extension[] = room.find(FIND_MY_STRUCTURES, {
 				filter: (structure: Structure) => structure.structureType == STRUCTURE_EXTENSION
 			});
-			let maxExtensions: number = Util.maxExtensionCount(room);
+			let maxExtensions: number = Util.maxStructureCountIn(STRUCTURE_EXTENSION, room);
 			if (builtExtensions.length < maxExtensions) {
 				let pos: RoomPosition|undefined;
 
@@ -26,7 +26,7 @@ export default class RoomLogic {
 				if (spawn) {
 					let origin: RoomPosition = spawn.pos;
 					let n = 1;
-					while (n != -1 && n < 50) {
+					while (n != -1 && n < 150) {
 						let nthPos: RoomPosition|undefined = Util.getNthClosest(origin, n);
 						if (nthPos) {
 							if (Util.terrainMatch([nthPos], ['plain']) && Util.isBuildable([nthPos])) {

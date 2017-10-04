@@ -29,6 +29,7 @@ export const loop = function(): void {
 	if (Game.time % 5 == 0) {
 		Log.log(Game.time + ' -----------------');
 	}
+	const start = new Date().getTime();
 
 	Mem.onTick();
 
@@ -54,17 +55,21 @@ export const loop = function(): void {
 	//tick rooms
 	All.rooms().forEach((room: Room) => {
 		RoomLogic.run(room);
-		TowerLogic.run(room);
+
+		//tick towers in room
+		All.towersIn(room).forEach(tower => TowerLogic.run(tower));
 
 		//tick single room creeps
 		All.creepsIn(room).forEach((creep: Creep) => {
-			let role = creep.memory.role;
-			if (role == 'generalist') GeneralistLogic.run(creep);
-			else if (role == 'builder') BuilderLogic.run(creep);
-			else if (role == 'miner') MinerLogic.run(creep);
-			//else if (role == 'carrier') CarrierLogic.run(creep);
-			//else if (role == 'upgrader') UpgraderLogic.run(creep);
-			//else if (role == 'repairer') RepairerLogic.run(creep);
+			if (!creep.spawning) {
+				let role = creep.memory.role;
+				if (role == 'generalist') GeneralistLogic.run(creep);
+				else if (role == 'builder') BuilderLogic.run(creep);
+				else if (role == 'miner') MinerLogic.run(creep);
+				//else if (role == 'carrier') CarrierLogic.run(creep);
+				//else if (role == 'upgrader') UpgraderLogic.run(creep);
+				//else if (role == 'repairer') RepairerLogic.run(creep);
+			}
 		});
 
 		//fill spawnRequests[]
@@ -80,7 +85,7 @@ export const loop = function(): void {
 			.filter(sr => sr.priority > 0) //0 priority means ignore
 			.sort((a, b) => a.priority - b.priority); //lowest to highest
 
-		if (spawnRequests.length > 0) Log.log('spawnRequests: ' + JSON.stringify(spawnRequests));
+		//if (spawnRequests.length > 0) Log.log('spawnRequests: ' + JSON.stringify(spawnRequests));
 
 		let spawnRequest: SpawnRequest | undefined = spawnRequests.pop();
 
@@ -92,7 +97,6 @@ export const loop = function(): void {
 
 		//try to use spawn to execute spawnRequest
 		if (spawn && spawnRequest) {
-			console.log('spawnRequest: ', spawnRequest);
 			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable);
 			let memory: {role: string} = spawnRequest.memory;
 			let result = spawn.createCreep(body, undefined, memory);
@@ -104,6 +108,8 @@ export const loop = function(): void {
 		}
 	});
 
+	const end = new Date().getTime();
+	console.log('duration: ', end - start);
 
 
 

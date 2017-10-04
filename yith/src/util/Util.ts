@@ -28,8 +28,8 @@ export default class Util {
 		return Util.countByRole(All.creepsIn(room))[role] || 0;
 	}
 
-	static maxExtensionCount(room: Room): number {
-		let structureTypeMaxByLevel: {[level: number]: number} = CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION] || {};
+	static maxStructureCountIn(type: string, room: Room): number {
+		let structureTypeMaxByLevel: {[level: number]: number} = CONTROLLER_STRUCTURES[type] || {};
 		if (room.controller) {
 			return structureTypeMaxByLevel[room.controller.level] || 0;
 		} else {
@@ -158,5 +158,54 @@ export default class Util {
 
 	static posOf(position: RoomPosition|{pos: RoomPosition}): RoomPosition {
 		return (typeof position == 'object')?(<any>position)['pos']:position;
+	}
+
+	static getEnergy(structure: Structure): number {
+		switch (structure.structureType) {
+			case STRUCTURE_SPAWN:
+				return (structure as Spawn).energy;
+			case STRUCTURE_EXTENSION:
+				return (structure as Extension).energy;
+			case STRUCTURE_TOWER:
+				return (structure as Tower).energy;
+			case STRUCTURE_LINK:
+				return (structure as Link).energy;
+			case STRUCTURE_CONTAINER:
+				return (structure as Container).store[RESOURCE_ENERGY] || 0;
+			case STRUCTURE_STORAGE:
+				return (structure as Storage).store[RESOURCE_ENERGY] || 0;
+			case STRUCTURE_TERMINAL:
+				return (structure as Terminal).store[RESOURCE_ENERGY] || 0;
+			default:
+				Log.error('Util::getEnergy() failed to get energy for structureType: ' + structure.structureType);
+				return 0;
+		}
+	}
+
+	static getCapacity(structure: Structure): number {
+		switch (structure.structureType) {
+			case STRUCTURE_SPAWN:
+				return (structure as Spawn).energyCapacity;
+			case STRUCTURE_EXTENSION:
+				return (structure as Extension).energyCapacity;
+			case STRUCTURE_TOWER:
+				return (structure as Tower).energyCapacity;
+			case STRUCTURE_LINK:
+				return (structure as Link).energyCapacity;
+			case STRUCTURE_CONTAINER:
+				return (structure as Container).storeCapacity;
+			case STRUCTURE_STORAGE:
+				return (structure as Storage).storeCapacity;
+			case STRUCTURE_TERMINAL:
+				return (structure as Terminal).storeCapacity;
+			default:
+				Log.error('Util::getEnergy() failed to get energy for structureType: ' + structure.structureType);
+				return 0;
+		}
+	}
+
+	static isFull(structure: Structure) {
+		//TODO: handle case where structure is full but not full of energy (at least not entirely)
+		return Util.getEnergy(structure) >= Util.getCapacity(structure);
 	}
 }

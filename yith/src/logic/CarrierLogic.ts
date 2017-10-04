@@ -11,6 +11,8 @@ export default class CarrierLogic {
 	}
 
 	static run(creep: Creep) {
+		if (Action.continue(creep)) return;
+
 		let creepEnergy = creep.carry.energy || 0;
 		let mem = creep.memory;
 		let origMemCarrying = mem.carrying;

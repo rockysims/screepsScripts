@@ -7,93 +7,12 @@ import Store from "util/Store";
 
 export default class MinerLogic {
 	static onTick() {
-		//All.rooms().forEach((room: Room) => {
-		//	if (Util.costOf([WORK, WORK, WORK, WORK, WORK, MOVE]) <= room.energyCapacityAvailable) {
-		//		//calc minerCount
-		//		const minerCount: number = Util.countByRoleInRoom('miner', room);
-		//
-		//		//fill sourcesWithContainerOrSite & sourcesWithoutContainer[]
-		//		const sourcesWithoutContainerOrSite: Source[] = [];
-		//		const sourcesWithContainerOrSite: Source[] = [];
-		//		const sources: Source[] = room.find(FIND_SOURCES);
-		//		const containers: Container[] = room.find(FIND_STRUCTURES, { //not FIND_MY_STRUCTURES
-		//			filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
-		//		});
-		//		const containerSites: ConstructionSite[] = room.find(FIND_CONSTRUCTION_SITES, {
-		//			filter: (containerSite: ConstructionSite) => containerSite.structureType == STRUCTURE_CONTAINER
-		//		});
-		//		sources.forEach((source: Source) => {
-		//			const container = containers
-		//				.filter((container: Container) => container.pos.inRangeTo(source, 1))
-		//				[0];
-		//			const containerSite = containerSites
-		//				.filter((containerSite: ConstructionSite) => containerSite.pos.inRangeTo(source, 1))
-		//				[0];
-		//			if (container || containerSite) {
-		//				sourcesWithContainerOrSite.push(source);
-		//			} else {
-		//				sourcesWithoutContainerOrSite.push(source);
-		//			}
-		//		});
-		//
-		//		//if (enough miners && more sources) build container
-		//		const enoughMiners = sourcesWithContainerOrSite.length <= minerCount;
-		//		if (enoughMiners && sourcesWithoutContainerOrSite.length > 0) {
-		//			//place container next to sourcesWithoutContainer[nearest to spawn]
-		//			const spawn = All.spawnsIn(room)[0];
-		//			if (spawn) {
-		//				const source = spawn.pos.findClosestByPath(sourcesWithoutContainerOrSite, {
-		//					ignoreCreeps: true
-		//				});
-		//				const tilesBySource: RoomPosition[] = Util
-		//					.getAdjacent8(source)
-		//					.filter((pos: RoomPosition) => Util.isBuildable([pos]));
-		//				const posBySource = spawn.pos.findClosestByPath(tilesBySource, {
-		//					ignoreCreeps: true
-		//				});
-		//
-		//				if (posBySource) {
-		//					room.createConstructionSite(posBySource, STRUCTURE_CONTAINER);
-		//					const containerSite: ConstructionSite|undefined = room.lookForAt<ConstructionSite>(LOOK_CONSTRUCTION_SITES, posBySource)[0];
-		//					if (containerSite) {
-		//
-		//
-		//
-		//
-		//						//nice because container removed is handled automatically
-		//						Mem.byId(containerSite)['isInputContainer'] = true;
-		//
-		//						//nice because transition from construction site to container is handled automatically
-		//						Mem.byPos(containerSite)['isInputContainer'] = true;
-		//
-		//						//solves transition from site to built
-		//						//gives an efficient way to loop over room's inputs
-		//						//remove invalid inputs while reading list
-		//
-		//						//const memPositions: RoomPosition[] = Mem.getOrPut(room.name + ':inputStructurePositions', []);
-		//						//memPositions.push(containerSite.pos);
-		//
-		//						//or
-		//
-		//						const inputsKey = 'inputStructurePositions';
-		//						room.memory[inputsKey] = room.memory[inputsKey] || [];
-		//						const inputs: RoomPosition[] = room.memory[inputsKey];
-		//						inputs.push(containerSite.pos);
-		//
-		//
-		//					}
-		//				} else {
-		//					Log.error('MinerLogic::onTick() failed to find posBySource.');
-		//				}
-		//			} else {
-		//				Log.warn('MinerLogic::onTick() failed to find spawn.');
-		//			}
-		//		}
-		//	}
-		//});
+		//no op
 	}
 
 	static run(creep: Creep) {
+		if (Action.continue(creep)) return;
+
 		const mem = creep.memory;
 
 		//try to set mem['sourceId'] && source
@@ -151,12 +70,12 @@ export default class MinerLogic {
 		}
 		const target: Structure|undefined = Game.getObjectById(mem['targetId']) || undefined;
 
-		//harvest || moveTo target
+		//harvest || moveToRange target
 		if (source && target) {
 			if (creep.pos.isEqualTo(target)) {
-				Action.harvest(creep, source);
+				Action.mine(creep, source);
 			} else {
-				Action.moveTo(creep, target, '#ff00ff');
+				Action.moveToRange(creep, target, '#ff00ff', 0);
 			}
 		} else if (source) {
 			Action.harvest(creep, source);
@@ -182,14 +101,12 @@ export default class MinerLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		console.log('room: ', room.name);
 		const minerCount = All.creepsByRoleIn('miner', room).length;
 		const sourceCount = All.sourcesIn(room).length;
 		const minerCountainerCount = Store.minerContainersIn(room).length;
 
 		//TODO: only request spawn if (not all minerContainers are full || 0 minerContainers)
 		const requestSpawn = minerCount < sourceCount && minerCountainerCount >= minerCount;
-		console.log('[minerCount < sourceCount && minerCountainerCount >= minerCount]: ', [minerCount, sourceCount, minerCountainerCount, minerCount]);
 		if (requestSpawn) {
 			const minerCost = Util.costOf([WORK, WORK, WORK, WORK, WORK, MOVE]);
 			const priority = (minerCost <= room.energyCapacityAvailable)

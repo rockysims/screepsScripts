@@ -14,6 +14,8 @@ export default class BuilderLogic {
 	}
 
 	static run(creep: Creep) {
+		if (Action.continue(creep)) return;
+
 		const constructionSite: ConstructionSite = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
 		if (!constructionSite) {
 			GeneralistLogic.run(creep);

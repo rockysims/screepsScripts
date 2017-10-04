@@ -7,15 +7,17 @@ export default class GeneralistLogic {
 	static onTick() {}
 
 	static run(creep: Creep) {
+		if (Action.continue(creep)) return;
+
 		let creepEnergy = creep.carry.energy || 0;
 		let mem = creep.memory;
 		let origMemHarvesting = mem.harvesting;
 
+		if (creepEnergy == 0) mem.harvesting = true;
+		else if (creepEnergy >= creep.carryCapacity) mem.harvesting = false;
+
 		if (mem.harvesting) {
 			Action.fillEnergy(creep);
-			if (creepEnergy >= creep.carryCapacity) {
-				mem.harvesting = false;
-			}
 		} else {
 			let target: Spawn|Extension|Tower = creep.pos.findClosestByPath(FIND_STRUCTURES, {
 				filter: (structure: Structure) => {
@@ -37,10 +39,6 @@ export default class GeneralistLogic {
 			else if (constructionSite) Action.build(creep, constructionSite);
 			else if (roomCtrl) Action.upgrade(creep, roomCtrl);
 			else Action.idle(creep);
-
-			if (creepEnergy <= 0) {
-				mem.harvesting = true;
-			}
 		}
 
 		if (mem.harvesting != origMemHarvesting) {

@@ -100,7 +100,7 @@ export default class Action {
 
 		//targets += sources
 		targets.push(... creep.room.find(FIND_SOURCES, {
-			filter: (source: Source) => source.energy >= 0
+			filter: (source: Source) => source.energy > 0
 		}) as Source[]);
 
 		const target: Resource|Container|Source = creep.pos.findClosestByPath(targets);

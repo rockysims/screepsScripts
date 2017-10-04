@@ -446,7 +446,7 @@ export default class Action {
 
 		//targets += sources
 		targets.push(... creep.room.find(FIND_SOURCES, {
-			filter: (source: Source) => source.energy >= 0
+			filter: (source: Source) => source.energy > 0
 		}) as Source[]);
 
 		const target: Resource|Container|Source = creep.pos.findClosestByPath(targets);
@@ -455,10 +455,10 @@ export default class Action {
 				Action.pickup(creep, target as Resource);
 			} else if ((target as any)['ticksToDecay']) {
 				Action.collect(creep, target as Container);
-			} else if ((target as any)['ticksToRegeneration']) {
+			} else if (!(target as any)['structureType']) {
 				Action.harvest(creep, target as Source);
 			} else {
-				Log.error('Action::fillEnergy() target truthy but does not match dropped/container/source');
+				Log.error('Action::fillEnergy() target truthy but does not match dropped/container/source at ' + target.pos.x + ', ' + target.pos.y);
 			}
 		} else {
 			creep.say('+energy?'); //can't find energy

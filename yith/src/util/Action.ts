@@ -196,7 +196,7 @@ class UpgradeAction extends AbstractAction {
 			if (result == OK) {
 				return true;
 			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, controller, '#00ff00', 2); //TODO: consider changing 2 (to 1? to 3?)
+				Action.moveToRange(creep, controller, '#00ff00', 3);
 				return true;
 			} else {
 				creep.say('#' + result + ' ' + UpgradeAction.type);
@@ -239,6 +239,18 @@ class BuildAction extends AbstractAction {
 
 //TODO: make all role logic handlers call Action.continue() at the end
 //	and make Action.whatever() not call Action.continue()
+
+//TODO: instead of allowing WhateverAction.run() to add actions, make it add via action.subActions.push()
+//	then cancel action and all subActions (and sub subActions etc.) if an action fails
+//	of course change continue() to execute subActions first
+//	hopefully that will solve issue where moveTo fails but parent doesn't so parent just adds moveTo again
+
+//TODO: finish action if target is invalid for some reason
+//	reason: mining container no longer has enough energy
+//	reason: source out of energy
+//	reason: construction site not found
+//PROBLEM: how can I cancel subAction task on parent action conditions?
+//	maybe parent action is responsible for calling run() on sub action? just a thought
 
 export default class Action {
 	static continue(creep: Creep): boolean {
@@ -466,9 +478,9 @@ export default class Action {
 
 		//TODO: sort options by range multiplied by
 		//	drops: *1
-		//	containers: *4
-		//	storages: *4
-		//	sources: *8
+		//	containers: *2
+		//	storages: *2
+		//	sources: *4
 
 		//TODO: make choice sticky until done or can't do
 		//	save in creep.memory.fillEnergyTargetId?

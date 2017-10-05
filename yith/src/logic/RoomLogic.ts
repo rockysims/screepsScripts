@@ -1,7 +1,7 @@
-import Log from "util/Log";
-import Util from "util/Util";
+import Log from 'util/Log';
+import Util from 'util/Util';
 import SpawnRequest from 'SpawnRequest';
-import All from "All";
+import All from 'All';
 
 export default class RoomLogic {
 	static onTick() {

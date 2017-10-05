@@ -1,241 +1,13 @@
+import AbstractAction from 'action/AbstractAction';
+import MoveToRangeAction from 'action/MoveToRangeAction';
+import HarvestAction from 'action/HarvestAction';
+import CollectAction from 'action/CollectAction';
+import PickupAction from 'action/PickupAction';
+import DeliverAction from 'action/DeliverAction';
+import UpgradeAction from 'action/UpgradeAction';
+import BuildAction from 'action/BuildAction';
 import Util from 'util/Util';
 import Log from 'util/Log';
-import All from 'All';
-
-abstract class AbstractAction {
-	type: string;
-
-	constructor(type: string) {
-		this.type = type;
-	}
-}
-
-class MoveToRangeAction extends AbstractAction {
-	static type: string = 'moveToRange';
-	target: RoomPosition;
-	colorCode: string;
-	range: number;
-
-	constructor(target: RoomPosition, colorCode: string, range: number) {
-		super(MoveToRangeAction.type);
-		this.target = target;
-		this.colorCode = colorCode;
-		this.range = range;
-	}
-
-	static run(creep: Creep, action: MoveToRangeAction): boolean {
-		console.log('b');
-		const at = action.target;
-		const pos: RoomPosition = new RoomPosition(at.x, at.y, at.roomName);
-		if (!creep.pos.inRangeTo(pos, action.range)) {
-			console.log('b if {} start');
-			const result: number = creep.moveTo(pos, {
-				reusePath: Math.min(Math.ceil(All.creeps().length * 0.4), 5),
-				visualizePathStyle: {stroke: action.colorCode}
-			});
-			if (result == OK) {
-				console.log('b ok');
-				return true;
-			} else if (result == ERR_TIRED) {
-				console.log('b tired');
-				return true;
-			} else {
-				creep.say('#' + result + ' ' + MoveToRangeAction.type);
-				console.log('b #' + result);
-				return false;
-			}
-		}
-
-		console.log('b end');
-		return false;
-	}
-}
-
-class HarvestAction extends AbstractAction {
-	static type: string = 'harvest';
-	sourceId: string;
-	colorCode: string;
-
-	constructor(source: Source, colorCode: string) {
-		super(HarvestAction.type);
-		this.sourceId = source.id;
-		this.colorCode = colorCode;
-	}
-
-	static run(creep: Creep, action: HarvestAction): boolean {
-		const source: Source|undefined = Game.getObjectById(action.sourceId) || undefined;
-		const creepEnergy = creep.carry.energy || 0;
-		if (source
-			&& source.energy > 0
-			&& (creepEnergy < creep.carryCapacity || creep.carryCapacity == 0)
-		) {
-			const result: number = creep.harvest(source);
-			if (result == OK) {
-				return true;
-			} else if (result == ERR_NOT_IN_RANGE) {
-				console.log('HarvestAction::run() calling Action.moveToRange()');
-				Action.moveToRange(creep, source, action.colorCode, 1);
-				return true;
-			} else {
-				creep.say('#' + result + ' ' + HarvestAction.type);
-				return false;
-			}
-		}
-
-		return false;
-	}
-}
-
-class CollectAction extends AbstractAction {
-	static type: string = 'collect';
-	containerId: string;
-
-	constructor(container: Container) {
-		super(CollectAction.type);
-		this.containerId = container.id;
-	}
-
-	static run(creep: Creep, action: CollectAction): boolean {
-		const container: Container|undefined = Game.getObjectById(action.containerId) || undefined;
-		const creepEnergy = creep.carry.energy || 0;
-		if (container
-			&& Util.getEnergy(container) > 0
-			&& creepEnergy < creep.carryCapacity
-		) {
-			const result: number = creep.withdraw(container, RESOURCE_ENERGY);
-			if (result == OK) {
-				return false; //can withdraw all available at once so done collecting after first success
-			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, container, '#00ffff', 1);
-				return true;
-			} else {
-				creep.say('#' + result + ' ' + CollectAction.type);
-				return false;
-			}
-		}
-
-		return false;
-	}
-}
-
-class PickupAction extends AbstractAction {
-	static type: string = 'pickup';
-	resourceId: string;
-
-	constructor(resource: Resource) {
-		super(PickupAction.type);
-		this.resourceId = resource.id;
-	}
-
-	static run(creep: Creep, action: PickupAction): boolean {
-		const resource: Resource|undefined = Game.getObjectById(action.resourceId) || undefined;
-		const creepEnergy = creep.carry.energy || 0;
-		if (resource && resource.amount > 0 && creepEnergy < creep.carryCapacity) {
-			const result: number = creep.pickup(resource);
-			if (result == OK) {
-				return true;
-			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, resource, '#00ffff', 1);
-				return true;
-			} else {
-				creep.say('#' + result + ' ' + PickupAction.type);
-				return false;
-			}
-		}
-
-		return false;
-	}
-}
-
-class DeliverAction extends AbstractAction {
-	static type: string = 'deliver';
-	structureId: string;
-
-	constructor(structure: Structure) {
-		super(DeliverAction.type);
-		this.structureId = structure.id;
-	}
-
-	static run(creep: Creep, action: DeliverAction): boolean {
-		const structure: Structure|undefined = Game.getObjectById(action.structureId) || undefined;
-		const creepEnergy = creep.carry.energy || 0;
-		if (structure && !Util.isFull(structure) && creepEnergy > 0) {
-			const result: number = creep.transfer(structure, RESOURCE_ENERGY);
-			if (result == OK) {
-				return true;
-			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, structure, '#00ff00', 1);
-				return true;
-			} else {
-				creep.say('#' + result + ' ' + DeliverAction.type);
-				return false;
-			}
-		}
-
-		return false;
-	}
-}
-
-class UpgradeAction extends AbstractAction {
-	static type: string = 'upgrade';
-	controllerId: string;
-
-	constructor(controller: Controller) {
-		super(UpgradeAction.type);
-		this.controllerId = controller.id;
-	}
-
-	static run(creep: Creep, action: UpgradeAction): boolean {
-		const controller: Controller|undefined = Game.getObjectById(action.controllerId) || undefined;
-		const creepEnergy = creep.carry.energy || 0;
-		if (controller
-			&& (controller.level < 8 || controller.ticksToDowngrade < CONTROLLER_DOWNGRADE[controller.level] - 10)
-			&& creepEnergy > 0
-		) {
-			const result: number = creep.upgradeController(controller);
-			if (result == OK) {
-				return true;
-			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, controller, '#00ff00', 3);
-				return true;
-			} else {
-				creep.say('#' + result + ' ' + UpgradeAction.type);
-				return false;
-			}
-		}
-
-		return false;
-	}
-}
-
-class BuildAction extends AbstractAction {
-	static type: string = 'build';
-	constructionSiteId: string;
-
-	constructor(constructionSite: ConstructionSite) {
-		super(BuildAction.type);
-		this.constructionSiteId = constructionSite.id;
-	}
-
-	static run(creep: Creep, action: BuildAction): boolean {
-		const constructionSite: ConstructionSite|undefined = Game.getObjectById(action.constructionSiteId) || undefined;
-		const creepEnergy = creep.carry.energy || 0;
-		if (constructionSite && creepEnergy > 0) {
-			const result: number = creep.build(constructionSite);
-			if (result == OK) {
-				return true;
-			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, constructionSite, '#5555ff', 1);
-				return true;
-			} else {
-				creep.say('#' + result + ' ' + BuildAction.type);
-				return false;
-			}
-		}
-
-		return false;
-	}
-}
 
 //TODO: make all role logic handlers call Action.continue() at the end
 //	and make Action.whatever() not call Action.continue()
@@ -268,7 +40,7 @@ export default class Action {
 				const action = actions[actions.length - 1];
 
 				let continueAction = false;
-				console.log("Executing: " + action.type);
+				console.log('Executing: ' + action.type);
 				if (action.type == MoveToRangeAction.type)
 					continueAction = MoveToRangeAction.run(creep, action as MoveToRangeAction);
 				else if (action.type == HarvestAction.type)
@@ -315,7 +87,7 @@ export default class Action {
 	//		const action = actions[actions.length-1];
 	//
 	//		let success = false;
-	//		console.log("Executing: " + action.type);
+	//		console.log('Executing: ' + action.type);
 	//		if (action.type == MoveToRangeAction.type)
 	//			success = MoveToRangeAction.run(creep, action as MoveToRangeAction);
 	//		else if (action.type == HarvestAction.type)
@@ -441,8 +213,8 @@ export default class Action {
 		//targets += energy drops
 		targets.push(... creep.room.find(FIND_DROPPED_RESOURCES, {
 			filter: (resource: Resource) =>
-				resource.resourceType == RESOURCE_ENERGY
-				&& resource.amount >= creep.carryCapacity * 0.75
+			resource.resourceType == RESOURCE_ENERGY
+			&& resource.amount >= creep.carryCapacity * 0.75
 		}) as Resource[]);
 
 		//targets += containers

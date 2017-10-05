@@ -1,7 +1,7 @@
-import Action from "util/Action";
+import Action from 'action/Action';
 import SpawnRequest from 'SpawnRequest';
-import Util from "util/Util";
-import Mem from "util/Mem";
+import Util from 'util/Util';
+import Mem from 'util/Mem';
 import All from 'All';
 
 export default class CarrierLogic {

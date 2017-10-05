@@ -1,7 +1,7 @@
-import Util from "util/Util";
-import Action from "util/Action";
+import Util from 'util/Util';
+import Action from 'action/Action';
 import SpawnRequest from 'SpawnRequest';
-import All from "All";
+import All from 'All';
 
 export default class GeneralistLogic {
 	static onTick() {}

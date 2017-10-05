@@ -1,9 +1,9 @@
-import Log from "util/Log";
-import Util from "util/Util";
-import Action from "util/Action";
+import Log from 'util/Log';
+import Util from 'util/Util';
+import Action from 'action/Action';
 import All from 'All';
 import SpawnRequest from 'SpawnRequest';
-import Store from "util/Store";
+import Store from 'util/Store';
 
 export default class MinerLogic {
 	static onTick() {

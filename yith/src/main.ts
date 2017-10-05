@@ -1,4 +1,4 @@
-/// <reference path="../../typings/index.d.ts" />
+/// <reference path='../../typings/index.d.ts' />
 
 import Log from 'util/Log';
 import SpawnRequest from 'SpawnRequest';
@@ -7,8 +7,8 @@ import GeneralistLogic from 'logic/GeneralistLogic';
 import BuilderLogic from 'logic/BuilderLogic';
 import MinerLogic from 'logic/MinerLogic';
 import TowerLogic from 'logic/TowerLogic';
-import Mem from "util/Mem";
-import All from "All";
+import Mem from 'util/Mem';
+import All from 'All';
 //import carrierLogic from 'logic/CarrierLogic';
 //import upgraderLogic from 'logic/UpgraderLogic';
 //import repairerLogic from 'logic/RepairerLogic';

@@ -1,8 +1,8 @@
-import Util from "util/Util";
-import Action from "util/Action";
+import Util from 'util/Util';
+import Action from 'action/Action';
 import GeneralistLogic from 'logic/GeneralistLogic';
 import SpawnRequest from 'SpawnRequest';
-import All from "All";
+import All from 'All';
 
 interface BuilderCreepMemory {
 	building: boolean;

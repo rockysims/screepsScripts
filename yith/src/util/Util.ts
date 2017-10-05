@@ -1,5 +1,5 @@
-import Log from "util/Log";
-import All from "All";
+import Log from 'util/Log';
+import All from 'All';
 
 export default class Util {
 	static costOf(bodyParts: Array<string>): number {

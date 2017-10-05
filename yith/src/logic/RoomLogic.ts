@@ -25,7 +25,7 @@ export default class RoomLogic {
 				let spawn: Spawn = All.spawnsIn(room)[0];
 				if (spawn) {
 					let origin: RoomPosition = spawn.pos;
-					let n = 1;
+					let n = 9; //skip first 8
 					while (n != -1 && n < 150) {
 						let nthPos: RoomPosition|undefined = Util.getNthClosest(origin, n);
 						if (nthPos) {

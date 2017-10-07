@@ -6,7 +6,6 @@ import PickupAction from 'action/PickupAction';
 import DeliverAction from 'action/DeliverAction';
 import UpgradeAction from 'action/UpgradeAction';
 import BuildAction from 'action/BuildAction';
-import Continue from 'action/Continue';
 import ActionQ from 'action/ActionQ';
 import Util from 'util/Util';
 import Log from 'util/Log';

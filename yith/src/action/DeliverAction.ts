@@ -1,5 +1,6 @@
 import AbstractAction from 'action/AbstractAction';
-import Action from 'action/Action';
+import MoveToRangeAction from 'action/MoveToRangeAction';
+import ActionQ from 'action/ActionQ';
 import Util from 'util/Util';
 
 export default class DeliverAction extends AbstractAction {
@@ -19,7 +20,11 @@ export default class DeliverAction extends AbstractAction {
 			if (result == OK) {
 				return true;
 			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, structure, '#00ff00', 1);
+				ActionQ.push(creep, new MoveToRangeAction(
+					Util.posOf(structure),
+					'#00ff00',
+					1
+				));
 				return true;
 			} else {
 				creep.say('#' + result + ' ' + DeliverAction.type);

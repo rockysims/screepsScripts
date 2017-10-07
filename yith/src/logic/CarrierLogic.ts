@@ -33,6 +33,8 @@ export default class CarrierLogic {
 			if (mem.carrying) creep.say('deliver');
 			else creep.say('collect');
 		}
+
+		Action.continue(creep);
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {

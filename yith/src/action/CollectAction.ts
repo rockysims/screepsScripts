@@ -1,5 +1,6 @@
 import AbstractAction from 'action/AbstractAction';
-import Action from 'action/Action';
+import MoveToRangeAction from 'action/MoveToRangeAction';
+import ActionQ from 'action/ActionQ';
 import Util from 'util/Util';
 
 export default class CollectAction extends AbstractAction {
@@ -22,7 +23,11 @@ export default class CollectAction extends AbstractAction {
 			if (result == OK) {
 				return false; //can withdraw all available at once so done collecting after first success
 			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, container, '#00ffff', 1);
+				ActionQ.push(creep, new MoveToRangeAction(
+					Util.posOf(container),
+					'#00ffff',
+					1
+				));
 				return true;
 			} else {
 				creep.say('#' + result + ' ' + CollectAction.type);

@@ -1,5 +1,7 @@
 import AbstractAction from 'action/AbstractAction';
-import Action from 'action/Action';
+import MoveToRangeAction from 'action/MoveToRangeAction';
+import ActionQ from 'action/ActionQ';
+import Util from 'util/Util';
 
 export default class PickupAction extends AbstractAction {
 	static type: string = 'pickup';
@@ -18,7 +20,11 @@ export default class PickupAction extends AbstractAction {
 			if (result == OK) {
 				return true;
 			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, resource, '#00ffff', 1);
+				ActionQ.push(creep, new MoveToRangeAction(
+					Util.posOf(resource),
+					'#00ffff',
+					1
+				));
 				return true;
 			} else {
 				creep.say('#' + result + ' ' + PickupAction.type);

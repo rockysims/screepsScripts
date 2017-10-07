@@ -50,6 +50,8 @@ export default class GeneralistLogic {
 			if (mem.harvesting) creep.say('get');
 			else creep.say('put');
 		}
+
+		Action.continue(creep);
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {

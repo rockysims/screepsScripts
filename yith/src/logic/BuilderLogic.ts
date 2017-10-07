@@ -44,6 +44,8 @@ export default class BuilderLogic {
 			if (mem.building) creep.say('build');
 			else creep.say('collect');
 		}
+
+		Action.continue(creep);
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {

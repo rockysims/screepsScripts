@@ -1,5 +1,7 @@
 import AbstractAction from 'action/AbstractAction';
-import Action from 'action/Action';
+import MoveToRangeAction from 'action/MoveToRangeAction';
+import ActionQ from 'action/ActionQ';
+import Util from 'util/Util';
 
 export default class UpgradeAction extends AbstractAction {
 	static type: string = 'upgrade';
@@ -21,7 +23,11 @@ export default class UpgradeAction extends AbstractAction {
 			if (result == OK) {
 				return true;
 			} else if (result == ERR_NOT_IN_RANGE) {
-				Action.moveToRange(creep, controller, '#00ff00', 3);
+				ActionQ.push(creep, new MoveToRangeAction(
+					Util.posOf(controller),
+					'#00ff00',
+					3
+				));
 				return true;
 			} else {
 				creep.say('#' + result + ' ' + UpgradeAction.type);

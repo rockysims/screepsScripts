@@ -81,6 +81,8 @@ export default class MinerLogic {
 			Action.harvest(creep, source);
 		}
 
+		Action.continue(creep);
+
 		//////////////////////////////////
 
 		function placeMinerContainerForSourceNear(source: Source, pos: RoomPosition) {
@@ -97,7 +99,6 @@ export default class MinerLogic {
 				Log.error('MinerLogic::onTick() failed to find posBySource.');
 			}
 		}
-
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {

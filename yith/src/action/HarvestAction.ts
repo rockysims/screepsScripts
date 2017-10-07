@@ -1,5 +1,7 @@
 import AbstractAction from 'action/AbstractAction';
-import Action from 'action/Action';
+import MoveToRangeAction from 'action/MoveToRangeAction';
+import ActionQ from 'action/ActionQ';
+import Util from 'util/Util';
 
 export default class HarvestAction extends AbstractAction {
 	static type: string = 'harvest';
@@ -23,8 +25,11 @@ export default class HarvestAction extends AbstractAction {
 			if (result == OK) {
 				return true;
 			} else if (result == ERR_NOT_IN_RANGE) {
-				console.log('HarvestAction::run() calling Action.moveToRange()');
-				Action.moveToRange(creep, source, action.colorCode, 1);
+				ActionQ.push(creep, new MoveToRangeAction(
+					Util.posOf(source),
+					action.colorCode,
+					1
+				));
 				return true;
 			} else {
 				creep.say('#' + result + ' ' + HarvestAction.type);

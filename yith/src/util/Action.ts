@@ -86,8 +86,16 @@ export default class Action {
 		const sources = All.sourcesIn(creep.room)
 			.filter((source) => source.energy > 0);
 		const targets = [];
-		targets.push(...sources);
+
+
+
+		if (energyDrops.length == 0 && containers.length == 0) {
+			targets.push(...sources);
+		}
 		// if (Math.random() < 0.1) targets.push(...sources);
+
+
+
 		targets.push(...containers);
 		targets.push(...energyDrops);
 		const sortedTargets = targets.sort((a, b) => {

@@ -8,14 +8,22 @@ interface AllCache {
 	containers?: Container[]
 	extractors?: StructureExtractor[]
 	constructionSites?: ConstructionSite[]
+	droppedEnergyByRoom: {[roomName: string]: Resource[]}
+}
+
+function getEmptyCache() {
+	return {
+		time: Game.time,
+		droppedEnergyByRoom: {}
+	};
 }
 
 export default class All {
-	static cache: AllCache = {time: Game.time};
+	static cache: AllCache = getEmptyCache();
 
 	static ensureFreshCache() {
 		if (All.cache.time != Game.time) {
-			All.cache = {time: Game.time};
+			All.cache = getEmptyCache();
 		}
 	}
 
@@ -159,6 +167,17 @@ export default class All {
 			? sites
 				.filter((site: ConstructionSite) => site.structureType == typeFilter)
 			: sites;
+	}
+
+	static droppedEnergyIn(room: Room): Resource[] {
+		All.ensureFreshCache();
+
+		if (!All.cache.droppedEnergyByRoom[room.name]) {
+			All.cache.droppedEnergyByRoom[room.name] = room.find(FIND_DROPPED_RESOURCES, {
+				filter: (resource: Resource) => resource.resourceType == RESOURCE_ENERGY
+			});
+		}
+		return All.cache.droppedEnergyByRoom[room.name];
 	}
 
 	static sourcesIn(room: Room): Source[] {

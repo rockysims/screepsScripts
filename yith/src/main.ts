@@ -101,6 +101,7 @@ export const loop = function(): void {
 
 		//try to use spawn to execute spawnRequest
 		if (spawn && spawnRequest) {
+			Log.log("try to spawn " + spawnRequest.memory.role);
 			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable);
 			let memory: {role: string} = spawnRequest.memory;
 			let result = spawn.createCreep(body, undefined, memory);

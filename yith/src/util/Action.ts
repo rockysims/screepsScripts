@@ -9,10 +9,10 @@ export default class Action {
 		});
 	}
 
-	static harvest(creep: Creep, source: Source) {
-		let result: number = creep.harvest(source);
+	static harvest(creep: Creep, target: Source|Mineral) {
+		let result: number = creep.harvest(target);
 		if (result == ERR_NOT_IN_RANGE) {
-			Action.moveTo(creep, source, '#ffff00');
+			Action.moveTo(creep, target, '#ffff00');
 		} else if (result != 0) {
 			creep.say('#' + result + ' harvest');
 		}

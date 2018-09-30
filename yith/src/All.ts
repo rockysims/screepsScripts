@@ -6,6 +6,7 @@ interface AllCache {
 	towers?: Tower[]
 	structures?: Structure[]
 	containers?: Container[]
+	extractors?: StructureExtractor[]
 	constructionSites?: ConstructionSite[]
 }
 
@@ -74,6 +75,17 @@ export default class All {
 		return All.cache.structures;
 	}
 
+	static constructionSites(): ConstructionSite[] {
+		All.ensureFreshCache();
+
+		if (!All.cache.constructionSites) {
+			All.cache.constructionSites = Object.keys(Game.constructionSites)
+				.map(key => Game.constructionSites[key]);
+		}
+
+		return All.cache.constructionSites;
+	}
+
 	static containers(): Container[] {
 		All.ensureFreshCache();
 
@@ -84,6 +96,18 @@ export default class All {
 		}
 
 		return All.cache.containers;
+	}
+
+	static extractors(): StructureExtractor[] {
+		All.ensureFreshCache();
+
+		if (!All.cache.extractors) {
+			All.cache.extractors = <StructureExtractor[]>All
+				.structures()
+				.filter((structure: Structure) => structure.structureType == STRUCTURE_EXTRACTOR);
+		}
+
+		return All.cache.extractors;
 	}
 
 	//---//
@@ -114,23 +138,34 @@ export default class All {
 			.filter((container: Container) => container.room.name == room.name);
 	}
 
+	static extractorsIn(room: Room): StructureExtractor[] {
+		return All
+			.extractors()
+			.filter((extractor: StructureExtractor) => extractor.room.name == room.name);
+	}
+
 	static creepsByRoleIn(role: string, room: Room): Creep[] {
 		return All
 			.creepsIn(room)
 			.filter((crp) => crp.memory.role == role);
 	}
 
-	static constructionSitesIn(room: Room): ConstructionSite[] {
-		All.ensureFreshCache();
+	static constructionSitesIn(room: Room, typeFilter?: String): ConstructionSite[] {
+		const sites = All
+			.constructionSites()
+			.filter((site: ConstructionSite) => site.room && site.room.name == room.name);
 
-		if (!All.cache.constructionSites) {
-			All.cache.constructionSites = room.find(FIND_CONSTRUCTION_SITES);
-		}
-
-		return All.cache.constructionSites;
+		return (typeFilter)
+			? sites
+				.filter((site: ConstructionSite) => site.structureType == typeFilter)
+			: sites;
 	}
 
 	static sourcesIn(room: Room): Source[] {
 		return room.find(FIND_SOURCES);
+	}
+
+	static mineralsIn(room: Room): Mineral[] {
+		return room.find(FIND_MINERALS);
 	}
 }

@@ -6,6 +6,7 @@ import RoomLogic from 'logic/RoomLogic';
 import GeneralistLogic from 'logic/GeneralistLogic';
 import BuilderLogic from 'logic/BuilderLogic';
 import MinerLogic from 'logic/MinerLogic';
+import MineralMinerLogic from 'logic/MineralMinerLogic';
 import TowerLogic from 'logic/TowerLogic';
 import Mem from "util/Mem";
 import All from "All";
@@ -39,6 +40,7 @@ export const loop = function(): void {
 	GeneralistLogic.onTick();
 	BuilderLogic.onTick();
 	MinerLogic.onTick();
+	MineralMinerLogic.onTick();
 	//CarrierLogic.onTick();
 	//UpgraderLogic.onTick();
 	//RepairerLogic.onTick();
@@ -66,6 +68,7 @@ export const loop = function(): void {
 				if (role == 'generalist') GeneralistLogic.run(creep);
 				else if (role == 'builder') BuilderLogic.run(creep);
 				else if (role == 'miner') MinerLogic.run(creep);
+				else if (role == 'mineralMiner') MineralMinerLogic.run(creep);
 				//else if (role == 'carrier') CarrierLogic.run(creep);
 				//else if (role == 'upgrader') UpgraderLogic.run(creep);
 				//else if (role == 'repairer') RepairerLogic.run(creep);
@@ -77,6 +80,7 @@ export const loop = function(): void {
 		spawnRequests.push(GeneralistLogic.generateSpawnRequest(room));
 		spawnRequests.push(BuilderLogic.generateSpawnRequest(room));
 		spawnRequests.push(MinerLogic.generateSpawnRequest(room));
+		spawnRequests.push(MineralMinerLogic.generateSpawnRequest(room));
 		//spawnRequests.push(CarrierLogic.generateSpawnRequest(room));
 		//spawnRequests.push(UpgraderLogic.generateSpawnRequest(room));
 		//spawnRequests.push(RepairerLogic.generateSpawnRequest(room));

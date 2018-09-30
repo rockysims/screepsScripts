@@ -53,6 +53,8 @@ export default class MineralMinerLogic {
 							})[0];
 							if (newContainer) {
 								room.memory['mineralContainerId'] = newContainer.id;
+							} else {
+								Log.error('MineralMinerLogic::onTick() could not find newContainer.');
 							}
 						}
 					} //else containerSite already exists
@@ -94,7 +96,7 @@ export default class MineralMinerLogic {
 		}
 
 		const mineral: Mineral|null = Game.getObjectById(mem['mineralId']) || null;
-		const container: Container|null = Game.getObjectById(mem['mineralContainerId']) || null;
+		const container: Container|null = Game.getObjectById(room.memory['mineralContainerId']) || null;
 
 		//harvest || moveTo container
 		if (mineral && container) {

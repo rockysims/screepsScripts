@@ -67,7 +67,7 @@ export default class GeneralistLogic {
 			return {
 				priority: Math.max(1, 9 - (countByRole['generalist'] || 0)),
 				generateBody: (energyAvailable: number): string[] => {
-					if (countByRole['generalist'] > 0) {
+					if (countByRole['generalist'] > 0 && (countByRole['miner'] || 0) > 0) {
 						return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], energyAvailable);
 					} else {
 						return [WORK, CARRY, MOVE, MOVE];

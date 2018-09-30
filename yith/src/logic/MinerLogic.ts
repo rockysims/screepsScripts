@@ -193,7 +193,7 @@ export default class MinerLogic {
 			const priority = (minerCost <= room.energyCapacityAvailable)
 				? Math.max(4, 7 - minerCount)
 				: (minerCount <= 0)
-					? 5
+					? 8
 					: 0;
 			return {
 				priority: priority,

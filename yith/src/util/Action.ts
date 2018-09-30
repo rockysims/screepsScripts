@@ -78,45 +78,45 @@ export default class Action {
 	//---//
 
 	static fillEnergy(creep: Creep) {
-		const targets: (Resource|Container|Source)[] = [];
-
-		//targets += energy drops
-		targets.push(... creep.room.find(FIND_DROPPED_RESOURCES, {
-			filter: (resource: Resource) =>
-				resource.resourceType == RESOURCE_ENERGY
-				&& resource.amount >= creep.carryCapacity * 0.75
-		}) as Resource[]);
-
-		//targets += containers
-		targets.push(... creep.room.find(FIND_STRUCTURES, {
-			filter: (structure: Structure) => {
-				if (structure.structureType == STRUCTURE_CONTAINER) {
-					return (<Container>structure).store[RESOURCE_ENERGY] >= creep.carryCapacity / 2;
-				} else {
-					return false;
-				}
+		const start = new Date().getTime();
+		const energyDrops = All.droppedEnergyIn(creep.room)
+			.filter(resource => resource.amount >= creep.carryCapacity * 0.75);
+		const containers = All.containersIn(creep.room)
+			.filter(container => container.store[RESOURCE_ENERGY] >= creep.carryCapacity * 1);
+		const sources = All.sourcesIn(creep.room)
+			.filter((source) => source.energy > 0);
+		const targets = [];
+		targets.push(...sources);
+		// if (Math.random() < 0.1) targets.push(...sources);
+		targets.push(...containers);
+		targets.push(...energyDrops);
+		const sortedTargets = targets.sort((a, b) => {
+			return b.pos.getRangeTo(creep.pos) - a.pos.getRangeTo(creep.pos);
+		});
+		let target: any = null; //TODO: find a way to not use the any type
+		while (sortedTargets.length > 0 && !target) {
+			const closestTarget = sortedTargets.pop();
+			if (closestTarget && closestTarget.pos.findClosestByPath([creep])) {
+				target = closestTarget;
 			}
-		}) as Container[]);
-
-		//targets += sources
-		targets.push(... creep.room.find(FIND_SOURCES, {
-			filter: (source: Source) => source.energy >= 0
-		}) as Source[]);
-
-		const target: Resource|Container|Source = creep.pos.findClosestByPath(targets);
+		}
 		if (target) {
-			if ((target as any)['resourceType']) {
-				Action.pickup(creep, target as Resource);
-			} else if ((target as any)['ticksToDecay']) {
-				Action.collect(creep, target as Container);
-			} else if (!(target as any)['structureType']) {
-				Action.harvest(creep, target as Source);
-			} else {
+			if (target['resourceType']) {
+				Action.pickup(creep, target);
+			}
+			else if (target['ticksToDecay']) {
+				Action.collect(creep, target);
+			}
+			else if (!target['structureType']) {
+				Action.harvest(creep, target);
+			}
+			else {
 				Log.error('Action::fillEnergy() target truthy but does not match dropped/container/source at ' + target.pos.x + ', ' + target.pos.y);
 			}
 		} else {
-			creep.say('+energy?'); //can't find energy
+			creep.say('+energy?');
 		}
+		console.log('fillEnergy() duration: ', new Date().getTime() - start);
 
 		//TODO: sort options by range multiplied by
 		//	drops: *1

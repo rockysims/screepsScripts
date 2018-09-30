@@ -16,18 +16,32 @@ export default class MineralMinerLogic {
 					const extractorSite = All.constructionSitesIn(room, STRUCTURE_EXTRACTOR)[0];
 					if (!extractorSite) {
 						room.createConstructionSite(mineral.pos, STRUCTURE_EXTRACTOR);
-						delete All.cache.constructionSites;
 					}
 				}
 
 				const container = Game.getObjectById(room.memory['mineralContainerId']);
 				if (!container) {
+					const containerSitePoint: {x: number, y: number}|undefined = room.memory['mineralContainerSitePoint'];
+					if (containerSitePoint) {
+						delete room.memory['mineralContainerSitePoint'];
+
+						const containerSitePos = room.getPositionAt(containerSitePoint.x, containerSitePoint.y);
+						if (containerSitePos) {
+							const containerSite: ConstructionSite|undefined = room.lookForAt<ConstructionSite>(LOOK_CONSTRUCTION_SITES, containerSitePos)[0];
+							if (containerSite) {
+								room.memory['mineralContainerSiteId'] = containerSite.id;
+							}
+						}
+					}
+
 					const containerSite = Game.getObjectById(room.memory['mineralContainerSiteId']);
 					if (!containerSite) {
 						if (!room.memory['mineralContainerSiteId']) {
-							const site = placeContainerSite(room, mineral);
-							if (site) {
-								room.memory['mineralContainerSiteId'] = site.id;
+							const pos = placeContainerSite(room, mineral);
+							if (pos) {
+								//save pos so we can grab container site's id during next tick
+								//note: storing pos in memory causes bug where pos != thingInPos.pos in future ticks so store x and y instead
+								room.memory['mineralContainerSitePoint'] = {x: pos.x, y: pos.y};
 							} else {
 								Log.error('MineralMinerLogic::onTick() failed to place mineral container.');
 							}
@@ -48,7 +62,7 @@ export default class MineralMinerLogic {
 
 		//////////////////////
 
-		function placeContainerSite(room: Room, mineral: Mineral): ConstructionSite|null {
+		function placeContainerSite(room: Room, mineral: Mineral): RoomPosition|null {
 			const spawn = All.spawnsIn(room)[0];
 			const tilesByMineral: RoomPosition[] = Util
 				.getAdjacent8(mineral)
@@ -59,8 +73,7 @@ export default class MineralMinerLogic {
 
 			if (posByMineral) {
 				room.createConstructionSite(posByMineral, STRUCTURE_CONTAINER);
-				delete All.cache.constructionSites;
-				return posByMineral.lookFor<ConstructionSite>(LOOK_CONSTRUCTION_SITES)[0];
+				return posByMineral;
 			} else {
 				Log.error('MineralMinerLogic::onTick() failed to find posByMineral.');
 				return null;

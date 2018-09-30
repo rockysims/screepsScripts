@@ -6,6 +6,9 @@ var replace = require('gulp-replace');
 var rename = require('gulp-rename');
 var del = require('del');
 
+var screeps = require('gulp-screeps');
+var credentials = require('./credentials.js');
+
 gulp.task('clean:temp', function() {
 	return del('yith/temp1');
 });
@@ -53,8 +56,9 @@ gulp.task('default', function (done) {
 //////////
 
 gulp.task('deploy:sim', function() {
+    credentials.branch = 'sim';
 	return gulp.src("yith/dist/*.js")
-		.pipe(gulp.dest("screeps.com/sim"));
+	    .pipe(screeps(credentials));
 });
 gulp.task('sim', function(done) {
 	sequence('default', 'clean:sim', 'deploy:sim', done);

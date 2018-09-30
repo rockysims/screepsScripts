@@ -21,8 +21,9 @@
     "gulp": "^3.9.1",
     "gulp-rename": "^1.2.2",
     "gulp-replace": "^0.6.1",
-    "gulp-typescript": "^3.2.2",
-    "run-sequence": "^2.1.0",
-    "typescript": "^2.5.2"
+    "gulp-screeps": "^1.0.8",
+    "gulp-typescript": "^3.2.4",
+    "run-sequence": "^2.2.1",
+    "typescript": "^2.9.2"
   }
 }

@@ -56,7 +56,8 @@ export default class GeneralistLogic {
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
 		let countByRole: {[role: string]: number} = Util.countByRole(All.creepsIn(room));
-		let requestSpawn = (countByRole['generalist'] || 0) < 2
+		const generalistMax = (room.controller && room.controller.level > 1) ? 3 : 2;
+		let requestSpawn = (countByRole['generalist'] || 0) < generalistMax
 			&& (
 				(countByRole['miner'] || 0) < 1
 				|| (countByRole['carrier'] || 0) < 1
@@ -64,9 +65,13 @@ export default class GeneralistLogic {
 
 		if (requestSpawn) {
 			return {
-				priority: 8,
+				priority: Math.max(1, 9 - (countByRole['generalist'] || 0)),
 				generateBody: (energyAvailable: number): string[] => {
-					return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], energyAvailable);
+					if (countByRole['generalist'] > 0) {
+						return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], energyAvailable);
+					} else {
+						return [WORK, CARRY, MOVE, MOVE];
+					}
 				},
 				memory: {role: 'generalist'}
 			};

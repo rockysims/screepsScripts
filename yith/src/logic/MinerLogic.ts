@@ -182,14 +182,12 @@ export default class MinerLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		console.log('room: ', room.name);
 		const minerCount = All.creepsByRoleIn('miner', room).length;
 		const sourceCount = All.sourcesIn(room).length;
 		const minerCountainerCount = Store.minerContainersIn(room).length;
 
 		//TODO: only request spawn if (not all minerContainers are full || 0 minerContainers)
 		const requestSpawn = minerCount < sourceCount && minerCountainerCount >= minerCount;
-		console.log('[minerCount < sourceCount && minerCountainerCount >= minerCount]: ', [minerCount, sourceCount, minerCountainerCount, minerCount]);
 		if (requestSpawn) {
 			const minerCost = Util.costOf([WORK, WORK, WORK, WORK, WORK, MOVE]);
 			const priority = (minerCost <= room.energyCapacityAvailable)

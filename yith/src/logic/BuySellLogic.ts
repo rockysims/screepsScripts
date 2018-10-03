@@ -1,10 +1,13 @@
 import SpawnRequest from 'SpawnRequest';
 import Log from 'util/Log';
 import All from "All";
+import Timer from "util/Timer";
 
 export default class BuySellLogic {
 	static onTick() {
 		if (Game.time % 10 != 0) return;
+
+		Timer.start("BuySellLogic.onTick()");
 
 		if (!Memory['mainTerminalId']) {
 			const room = All.rooms().filter(r => !!r.terminal)[0];
@@ -69,121 +72,102 @@ export default class BuySellLogic {
 			});
 			const terminalSpace = terminal.storeCapacity - terminalStoreUsed;
 
-			//set creditsPerEnergyEstimate
-			const energyInPlan = makeEnergyInPlan(terminalSpace, 8);
-			const creditsPerEnergyEstimate = energyInPlan.realPrice / energyInPlan.netAmount;
 
-			//try to flip
-			const resourceType = RESOURCE_UTRIUM;
-			const ambitiousResourceOutPlan = makeResourceOutPlan(resourceType, terminalSpace, 1, creditsPerEnergyEstimate);
-			const ambitiousResourceInPlan = makeResourceInPlan(resourceType, ambitiousResourceOutPlan.amount, 1, creditsPerEnergyEstimate);
-			const ambitiousEnergyCost = ambitiousResourceInPlan.energyCost + ambitiousResourceOutPlan.energyCost;
-			const ambitiousProfit = ambitiousResourceOutPlan.priceWithoutEnergy
-								  - ambitiousResourceInPlan.priceWithoutEnergy
-								  - ambitiousEnergyCost * creditsPerEnergyEstimate;
-			if (ambitiousProfit > 0) {
-				//remake plans (leaving space for the energy needed this time and limiting Out.amount to available In.amount)
-				const amountToFlip = Math.min(terminalSpace - ambitiousEnergyCost, ambitiousResourceInPlan.amount);
-				const resourceOutPlan = makeResourceOutPlan(resourceType, amountToFlip, 1, creditsPerEnergyEstimate);
-				const resourceInPlan = makeResourceInPlan(resourceType, resourceOutPlan.amount, 1, creditsPerEnergyEstimate);
-				const energyCost = resourceInPlan.energyCost + resourceOutPlan.energyCost;
-				const energyToBuy = Math.max(0, energyCost - terminal.store[RESOURCE_ENERGY]);
-				const energyInPlan = makeEnergyInPlan(energyToBuy, 8);
-				const profit = resourceOutPlan.priceWithoutEnergy
-					- resourceInPlan.priceWithoutEnergy
-					- energyInPlan.realPrice;
+
+
+
+			terminalRoom.memory['resourceIndex'] = terminalRoom.memory['resourceIndex'] || 0;
+			const resourceType = RESOURCES_ALL[terminalRoom.memory['resourceIndex']];
+			let profit = 0;
+			if (resourceType === RESOURCE_ENERGY) {
+				const energyOutPlan = makeEnergyOutPlan(terminalSpace, 1);
+				const energyInPlan = makeEnergyInPlan(energyOutPlan.netAmount, 9);
+				profit = energyOutPlan.realPrice - energyInPlan.realPrice;
 				if (profit > 0) {
-					//execute
-					// executeEnergyPlan(energyInPlan);
-					// executeResourcePlan(resourceInPlan);
-					// executeResourcePlan(resourceOutPlan);
-					Log.log(JSON.stringify(energyInPlan));
-					Log.log(JSON.stringify(resourceInPlan));
-					Log.log(JSON.stringify(resourceOutPlan));
-					Log.log("profit: " + profit);
-					Log.log("energyPriceEst: " + energyCost * creditsPerEnergyEstimate);
-
-					//TODO: also need to handle case where energyInPlan.amount < energyToBuy
-
-					//TODO: between flip ticks, sell everything in terminal (except a little energy)
-					//	in case some part of flip fails due to another player filling the order instead of me
+					executePlan(energyInPlan);
+					executePlan(energyOutPlan);
+					Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.realPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.realPrice));
+					Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.realPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.realPrice));
+					Log.log("Profit: $" + format(profit) + " on " + resourceType);
+				} else {
+					Log.log("Profit: $" + format(profit) + " on " + resourceType + " so not flipping.");
 				}
+			} else {
+				const energyInPlan = makeEnergyInPlan(terminalSpace, 8);
+				if (energyInPlan.netAmount > 0) {
+					const creditsPerEnergyEstimate = energyInPlan.realPrice / energyInPlan.netAmount;
+					profit = tryToFlip(resourceType, terminal, creditsPerEnergyEstimate);
+				}
+			}
+			if (profit <= 0) {
+				terminalRoom.memory['resourceIndex'] = (terminalRoom.memory['resourceIndex'] + 1) % RESOURCES_ALL.length;
 
 
+				//TODO: between flip ticks, sell everything in terminal (except a little energy)
+				//	in case some part of flip fails due to another player filling the order instead of me
 
-
-
-				// const ambitiousSpaceRequirement = ambitiousResourceInPlan.amount
-				// 	+ ambitiousResourceOutPlan.amount + ambitiousResourceOutPlan.energyCost;
-
+				const extraEnergy = terminal.store[RESOURCE_ENERGY] - terminal.storeCapacity / 3;
+				if (extraEnergy > 0) {
+					const energyOutPlan = makeEnergyOutPlan(extraEnergy, 10);
+					executePlan(energyOutPlan);
+					Log.log("Sell extra energy: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.realPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.realPrice));
+				}
 			}
 
-			makeEnergyOutPlan(0, 0); //TODO: delete this line
 
 
+			function tryToFlip(resourceType: string, terminal: Terminal, creditsPerEnergyEstimate: number): number {
+				const ambitiousResourceOutPlan = makeResourceOutPlan(resourceType, terminalSpace, 1, creditsPerEnergyEstimate);
+				const ambitiousResourceInPlan = makeResourceInPlan(resourceType, ambitiousResourceOutPlan.amount, 1, creditsPerEnergyEstimate);
+				const ambitiousEnergyCost = ambitiousResourceInPlan.energyCost + ambitiousResourceOutPlan.energyCost;
+				const ambitiousProfit = ambitiousResourceOutPlan.priceWithoutEnergy
+					- ambitiousResourceInPlan.priceWithoutEnergy
+					- ambitiousEnergyCost * creditsPerEnergyEstimate;
+				if (ambitiousProfit > 0) {
+					//remake plans (leaving space for the energy needed this time and limiting Out.amount to available In.amount)
+					const amountToFlip = Math.min(terminalSpace - ambitiousEnergyCost, ambitiousResourceInPlan.amount);
+					const resourceOutPlan = makeResourceOutPlan(resourceType, amountToFlip, 1, creditsPerEnergyEstimate);
+					const resourceInPlan = makeResourceInPlan(resourceType, resourceOutPlan.amount, 1, creditsPerEnergyEstimate);
+					const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
+					const energyToBuy = Math.max(0, energyUsed - terminal.store[RESOURCE_ENERGY]);
+					const energyInPlan = makeEnergyInPlan(energyToBuy, 8);
+					const energyOnHandUsed = energyUsed - energyInPlan.netAmount;
+					const profit = resourceOutPlan.priceWithoutEnergy
+						- resourceInPlan.priceWithoutEnergy
+						- energyInPlan.realPrice
+						- energyOnHandUsed * creditsPerEnergyEstimate;
+					if (profit > 0 && energyInPlan.netAmount >= energyToBuy) {
+						//execute
+						executePlan(energyInPlan);
+						executePlan(resourceInPlan);
+						executePlan(resourceOutPlan);
+						Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate, 5) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(energyInPlan.netAmount) + " of it purchased)");
+						Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+						Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
+						Log.log("Profit: $" + format(profit) + " on " + resourceType);
 
-			// tryToFlipMineral(terminalSpace, RESOURCE_UTRIUM, creditsPerEnergyEstimate);
-			// function tryToFlipMineral(terminalSpace: number, resourceType: string, creditsPerEnergy: number) {
-			// 	const resourceOutPlan = makeResourceOutPlan(resourceType, terminalSpace, 1, creditsPerEnergy);
-			//
-			// 	// const resourceInPlan = makeEnergyInPlan(resourceOutPlan.amount, 9);
-			// 	// const energyInPlan = makeEnergyInPlan()
-			// 	// Log.log("energyInPlan.realPrice: " + energyInPlan.realPrice);
-			// 	// Log.log("energyOutPlan.realPrice: " + energyOutPlan.realPrice);
-			// 	// Log.log("profit: " + (energyOutPlan.realPrice - energyInPlan.realPrice));
-			// 	// Log.log("energyOutPlan.netAmount: " + energyOutPlan.netAmount);
-			// }
+						return profit;
+					} else {
+						Log.log("Profit: $" + format(profit) + " on " + resourceType + " so not flipping.");
+						return profit;
+					}
+				} else {
+					Log.log("Profit: $" + format(ambitiousProfit) + " on " + resourceType + " so not flipping.");
+					return profit;
+				}
+			}
 
+			function format(n: number, precision?: number) {
+				return n.toFixed(precision || 2).replace(/\.(\d*?)0+$/,".$1").replace(/\.$/, "");
+			}
 
-
-
-
-			// const energyOutPlan = makeEnergyOutPlan(terminalSpace, 1);
-			// const energyInPlan = makeEnergyInPlan(energyOutPlan.netAmount, 9);
-			// Log.log("energyInPlan.realPrice: " + energyInPlan.realPrice);
-			// Log.log("energyOutPlan.realPrice: " + energyOutPlan.realPrice);
-			// Log.log("profit: " + (energyOutPlan.realPrice - energyInPlan.realPrice));
-			// Log.log("energyOutPlan.netAmount: " + energyOutPlan.netAmount);
-			// if (energyInPlan.realPrice < energyOutPlan.realPrice) {
-			// 	executePlan(energyInPlan);
-			// 	executePlan(energyOutPlan);
-			// }
-
-
-
-
-			// const energyBuyOrdersRaw = Game.market.getAllOrders({type: ORDER_BUY, resourceType: RESOURCE_ENERGY});
-			//
-			// const bestEnergyBuyOrder
-
-
-			// const bestBuyOrderByResourceType = {};
-			// RESOURCES_ALL.forEach(resourceType => {
-			//
-			// });
-			// const orders = Game.market.orders;
-			// for (let id in orders) {
-			// 	const order = orders[id];
-			//
-			// }
-
-
-
-
-
-			// {
-			// 		"55c34a6b5be41a0a6e80c68b": {
-			// 			id : "55c34a6b5be41a0a6e80c68b",
-			// 			created : 13131117,
-			// 			active: true,
-			// 			type : "sell"
-			// 			resourceType : "OH",
-			// 			roomName : "W1N1",
-			// 			amount : 15821,
-			// 			remainingAmount : 30000,
-			// 			totalAmount : 50000,
-			// 			price : 2.95
-			// 		},
+			function executePlan(plan: EnergyPlan|ResourcePlan) {
+				Log.log("Not executing plan orders " + plan.orders.length);
+				//TODO: fix bug where only first deal goes through (or at least I think that's the issue)
+				// plan.orders.forEach(order => {
+				// 	Game.market.deal(order.id, order.amount, terminalRoom.name);
+				// });
+			}
 
 			function getEnergyBuyOrdersSortedByRealUnitPrice(): DecoratedEnergyOrder[] {
 				//ensure cache.energyBuyOrdersSortedByRealUnitPrice exists
@@ -419,10 +403,12 @@ export default class BuySellLogic {
 				return plan;
 			}
 		}
+
+		Timer.end("BuySellLogic.onTick()");
 	}
 
 	static run(room: Room) {
-		Log.log("ignoring BuySellLOgic::run() from room " + room.name);
+		Log.log("ignoring BuySellLogic::run() from room " + room.name);
 
 		// if (Game.time % 10 != 0) return;
 		// const start = new Date().getTime();

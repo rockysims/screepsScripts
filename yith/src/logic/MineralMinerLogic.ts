@@ -1,6 +1,6 @@
 import Log from "util/Log";
 import Util from "util/Util";
-import Action from "util/Action";
+import Action from "action/Action";
 import All from 'All';
 import SpawnRequest from 'SpawnRequest';
 
@@ -84,6 +84,8 @@ export default class MineralMinerLogic {
 	}
 
 	static run(creep: Creep) {
+		if (Action.continue(creep)) return;
+
 		const room = creep.room;
 		const mem = creep.memory;
 
@@ -98,25 +100,26 @@ export default class MineralMinerLogic {
 		const mineral: Mineral|null = Game.getObjectById(mem['mineralId']) || null;
 		const container: Container|null = Game.getObjectById(room.memory['mineralContainerId']) || null;
 
-		//harvest || moveTo container
+		//extract || moveTo container
 		if (mineral && container) {
 			if (creep.pos.isEqualTo(container)) {
-				Action.harvest(creep, mineral);
+				Action.extract(creep, mineral);
 			} else {
-				Action.moveTo(creep, container, '#ff00ff');
+				Action.moveToRange(creep, container, '#ff00ff', 0);
 			}
 		} else if (mineral) {
-			Action.harvest(creep, mineral);
+			Action.extract(creep, mineral);
 		}
+
+		Action.continue(creep);
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
 		const roomHasExtractor = All.extractorsIn(room).length > 0;
 		const roomHasMineralMiner = All.creepsByRoleIn('mineralMiner', room).length > 0;
-		const roomHasMineralContainer = !!Game.getObjectById(room.memory['mineralContainerId']);
 
-		const requestSpawn = roomHasExtractor && roomHasMineralContainer && !roomHasMineralMiner;
-		if (requestSpawn) {
+		const requestSpawn = roomHasExtractor && !roomHasMineralMiner;
+		if (false && requestSpawn) { //TODO: remove "false && " part once system for taking minerals to terminal/storage is in place
 			const priority = 5;
 			return {
 				priority: priority,

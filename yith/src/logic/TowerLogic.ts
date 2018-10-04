@@ -21,7 +21,7 @@ export default class TowerLogic {
 					let spawn: Spawn = All.spawnsIn(room)[0];
 					if (spawn) {
 						let origin: RoomPosition = spawn.pos;
-						let n = 1;
+						let n = 9; //skip first 8
 						while (n != -1 && n < 150) {
 							let nthPos: RoomPosition|undefined = Util.getNthClosest(origin, n);
 							if (nthPos) {
@@ -60,6 +60,10 @@ export default class TowerLogic {
 				let damagedStructures: Structure[] = tower.pos.findInRange(FIND_STRUCTURES, 10, {
 					filter: (structure: Structure) => structure.hits < structure.hitsMax
 				});
+				damagedStructures = damagedStructures.filter(s =>
+					(s.structureType != STRUCTURE_WALL && s.structureType != STRUCTURE_RAMPART)
+					|| s.hits < 10000
+				);
 				damagedStructures = damagedStructures.filter(s => s.hits < 1000000);
 				damagedStructures.sort((a, b) => a.hits - b.hits); //lowest first
 				let damagedStructure = damagedStructures[0];

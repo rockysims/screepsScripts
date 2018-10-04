@@ -1,63 +1,94 @@
-import Util from "util/Util";
-import Action from "util/Action";
+import Util from 'util/Util';
+import Action from 'action/Action';
 import SpawnRequest from 'SpawnRequest';
-import All from "All";
+import All from 'All';
 
 export default class GeneralistLogic {
 	static onTick() {}
 
 	static run(creep: Creep) {
+		//const start = new Date().getTime();
+		if (Action.continue(creep)) return;
+
 		let creepEnergy = creep.carry.energy || 0;
 		let mem = creep.memory;
 		let origMemHarvesting = mem.harvesting;
 
+		if (creepEnergy == 0) mem.harvesting = true;
+		else if (creepEnergy >= creep.carryCapacity) mem.harvesting = false;
+
+		//console.log('duration generalist::run() a: ', new Date().getTime() - start);
+
 		if (mem.harvesting) {
 			Action.fillEnergy(creep);
-			if (creepEnergy >= creep.carryCapacity) {
-				mem.harvesting = false;
-			}
 		} else {
-			let target = creep.pos.findClosestByPath(
+			let target: Structure = creep.pos.findClosestByPath(
 				All.towersIn(creep.room).filter((tower: Tower) => tower.energy < 100)
 			);
 
-			target = target || creep.pos.findClosestByPath(FIND_STRUCTURES, {
-				filter: (structure: Structure) => {
-					return (structure.structureType == STRUCTURE_EXTENSION
-							|| structure.structureType == STRUCTURE_SPAWN
-						) &&
-						(<Extension|Spawn>structure).energy < (<Extension|Spawn>structure).energyCapacity;
-				}
-			});
+			if (!target) {
+				const spawnAndExtensionTargets: Structure[] = All
+					.structures()
+					.filter((structure: Structure) => {
+						return (structure.structureType == STRUCTURE_EXTENSION
+								|| structure.structureType == STRUCTURE_SPAWN
+							) &&
+							(<Extension|Spawn>structure).energy < (<Extension|Spawn>structure).energyCapacity;
+					});
+				target = creep.pos.findClosestByPath(spawnAndExtensionTargets) as Extension|Spawn;
+			}
+
+			//console.log('duration generalist::run() b: ', new Date().getTime() - start);
 
 			target = target || creep.pos.findClosestByPath(
 					All.towersIn(creep.room).filter((tower: Tower) => tower.energy + 50 < tower.energyCapacity)
 			);
 
-			let constructionSite: ConstructionSite|undefined = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
 			let roomCtrl: Controller|undefined = creep.room.controller;
 
-			if (target) Action.deliver(creep, target);
-			else if (roomCtrl && roomCtrl.ticksToDowngrade < CONTROLLER_DOWNGRADE[roomCtrl.level] - 500) Action.upgrade(creep, roomCtrl);
+			const terminal = creep.room.terminal;
+			if (terminal) {
+				const terminalSpace = Util.terminalSpace(terminal);
+				const terminalEnergy = terminal.store[RESOURCE_ENERGY];
+				const terminalWantsEnergy = terminalEnergy < 100000 || (roomCtrl && roomCtrl.level >= 8);
+				if (terminalWantsEnergy && (creep.carry.energy || 0) <= terminalSpace) {
+					target = target || creep.room.terminal;
+				}
+			}
+
+			let constructionSite: ConstructionSite|undefined = creep.pos.findClosestByPath(All.constructionSitesIn(creep.room));
+
+			if (roomCtrl && roomCtrl.ticksToDowngrade < CONTROLLER_DOWNGRADE[roomCtrl.level] - 4000) Action.upgrade(creep, roomCtrl);
+			else if (target) Action.deliver(creep, target);
 			else if (constructionSite) Action.build(creep, constructionSite);
 			else if (roomCtrl) Action.upgrade(creep, roomCtrl);
 			else Action.idle(creep);
-
-			if (creepEnergy <= 0) {
-				mem.harvesting = true;
-			}
 		}
 
+		//console.log('duration generalist::run() y: ', new Date().getTime() - start);
+
+		//TODO: consider removing calls to creep.say() since it seems to have low performance (this block took 5ms)
 		if (mem.harvesting != origMemHarvesting) {
 			if (mem.harvesting) creep.say('get');
 			else creep.say('put');
 		}
+
+		Action.continue(creep);
+
+		//console.log('duration generalist::run() z: ', new Date().getTime() - start);
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		let countByRole: {[role: string]: number} = Util.countByRole(All.creepsIn(room));
-		const generalistMax = (room.controller && room.controller.level > 1) ? 3 : 2;
-		let requestSpawn = (countByRole['generalist'] || 0) < generalistMax
+		const countByRole: {[role: string]: number} = Util.countByRole(All.creepsIn(room));
+		const generalistCount = countByRole['generalist'] || 0;
+		const roomCtrlLevel = (!room.controller)?0:room.controller.level;
+		const generalistMax = room.controller
+			?((roomCtrlLevel == 1)
+				?2
+				:(6 - Math.min(roomCtrlLevel - 2, 4))
+			)
+			:0;
+		const requestSpawn = (countByRole['generalist'] || 0) < generalistMax
 			&& (
 				(countByRole['miner'] || 0) < 1
 				|| (countByRole['carrier'] || 0) < 1
@@ -65,9 +96,9 @@ export default class GeneralistLogic {
 
 		if (requestSpawn) {
 			return {
-				priority: Math.max(1, 9 - (countByRole['generalist'] || 0)),
+				priority: Math.max(1, 8 - generalistCount),
 				generateBody: (energyAvailable: number): string[] => {
-					if (countByRole['generalist'] > 0 && (countByRole['miner'] || 0) > 0) {
+					if (countByRole['generalist'] > 0) {
 						return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], energyAvailable);
 					} else {
 						return [WORK, CARRY, MOVE, MOVE];

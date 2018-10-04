@@ -82,8 +82,8 @@ export default class BuySellLogic {
 
 		const lackEnergyThreshold = 50000;
 		const extraEnergyThreshold = 200000;
-		const maxResourcesToConsiderPerTick = 20;
-		const softMaxResourceOrdersToConsiderPerTick = 50;
+		const maxResourcesToConsiderPerTick = RESOURCES_ALL.length;
+		const softMaxResourceOrdersToConsiderPerTick = 25;
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 
@@ -103,7 +103,7 @@ export default class BuySellLogic {
 						resourceOrdersCached += (cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType] || []).length;
 					}
 					if (resourceOrdersCached > softMaxResourceOrdersToConsiderPerTick) {
-						Log.log("resourceOrdersCached is " + resourceOrdersCached + " so done considering things to flip for this tick.");
+						Log.log("resourceOrdersCached is " + resourceOrdersCached + " so done considering resources to flip for this tick.");
 						break;
 					}
 				}

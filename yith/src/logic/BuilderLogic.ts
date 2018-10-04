@@ -1,8 +1,8 @@
-import Util from "util/Util";
-import Action from "util/Action";
+import Util from 'util/Util';
+import Action from 'action/Action';
 import GeneralistLogic from 'logic/GeneralistLogic';
 import SpawnRequest from 'SpawnRequest';
-import All from "All";
+import All from 'All';
 
 interface BuilderCreepMemory {
 	building: boolean;
@@ -14,7 +14,9 @@ export default class BuilderLogic {
 	}
 
 	static run(creep: Creep) {
-		const constructionSite: ConstructionSite = creep.pos.findClosestByPath(FIND_CONSTRUCTION_SITES);
+		if (Action.continue(creep)) return;
+
+		const constructionSite: ConstructionSite = creep.pos.findClosestByPath(All.constructionSitesIn(creep.room));
 		if (!constructionSite) {
 			GeneralistLogic.run(creep);
 			return;
@@ -42,18 +44,21 @@ export default class BuilderLogic {
 			if (mem.building) creep.say('build');
 			else creep.say('collect');
 		}
+
+		Action.continue(creep);
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
 		let countByRole = Util.countByRole(All.creepsIn(room));
 		let builderCount = countByRole['builder'] || 0;
-		let constructionSiteCount = room.find(FIND_CONSTRUCTION_SITES).length;
+		let constructionSiteCount = All.constructionSitesIn(room).length;
 
 		if (constructionSiteCount > builderCount) {
 			let priority = 7;
 			if (builderCount > 0) {
 				let desiredSpawnsCount = Math.max(0, constructionSiteCount - builderCount);
 				priority = Math.min(3 + desiredSpawnsCount, 7);
+				priority = Math.max(1, priority - builderCount);
 			}
 			return {
 				priority: priority,

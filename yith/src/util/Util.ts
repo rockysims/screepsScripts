@@ -204,6 +204,14 @@ export default class Util {
 		}
 	}
 
+	static terminalSpace(terminal: Terminal) {
+		let terminalStoreUsed = 0;
+		RESOURCES_ALL.forEach(resourceType => {
+			terminalStoreUsed += terminal.store[resourceType] || 0;
+		});
+		return terminal.storeCapacity - terminalStoreUsed;
+	}
+
 	static isFull(structure: Structure) {
 		//TODO: handle case where structure is full but not full of energy (at least not entirely)
 		return Util.getEnergy(structure) >= Util.getCapacity(structure);

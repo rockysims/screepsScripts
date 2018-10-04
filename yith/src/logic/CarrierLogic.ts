@@ -1,7 +1,7 @@
-import Action from "util/Action";
+import Action from 'action/Action';
 import SpawnRequest from 'SpawnRequest';
-import Util from "util/Util";
-import Mem from "util/Mem";
+import Util from 'util/Util';
+import Mem from 'util/Mem';
 import All from 'All';
 
 export default class CarrierLogic {
@@ -11,6 +11,8 @@ export default class CarrierLogic {
 	}
 
 	static run(creep: Creep) {
+		if (Action.continue(creep)) return;
+
 		let creepEnergy = creep.carry.energy || 0;
 		let mem = creep.memory;
 		let origMemCarrying = mem.carrying;
@@ -31,6 +33,8 @@ export default class CarrierLogic {
 			if (mem.carrying) creep.say('deliver');
 			else creep.say('collect');
 		}
+
+		Action.continue(creep);
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {

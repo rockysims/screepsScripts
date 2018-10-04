@@ -2,6 +2,7 @@
 
 import Log from 'util/Log';
 import SpawnRequest from 'SpawnRequest';
+import BuySellLogic from "logic/BuySellLogic";
 import RoomLogic from 'logic/RoomLogic';
 import GeneralistLogic from 'logic/GeneralistLogic';
 import BuilderLogic from 'logic/BuilderLogic';
@@ -34,6 +35,7 @@ export const loop = function(): void {
 
 	Mem.onTick();
 
+	BuySellLogic.onTick();
 	RoomLogic.onTick();
 	TowerLogic.onTick();
 
@@ -56,6 +58,7 @@ export const loop = function(): void {
 
 	//tick rooms
 	All.rooms().forEach((room: Room) => {
+		BuySellLogic.run(room);
 		RoomLogic.run(room);
 
 		//tick towers in room
@@ -104,8 +107,10 @@ export const loop = function(): void {
 			Log.log("try to spawn " + spawnRequest.memory.role);
 			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable);
 			let memory: {role: string} = spawnRequest.memory;
-			let result = spawn.createCreep(body, undefined, memory);
+			Memory['nextCreepId'] = Memory['nextCreepId'] || 0;
+			let result = spawn.createCreep(body,  memory.role + " #" + Memory['nextCreepId'], memory);
 			if (typeof(result) == 'string') {
+				Memory['nextCreepId']++;
 				let pos = new RoomPosition(spawn.pos.x + 1, spawn.pos.y, room.name);
 				room.visual.text(memory.role, pos);
 				console.log('Spawning @' + spawnRequest.priority + ' ' + memory.role + ': ' + body);

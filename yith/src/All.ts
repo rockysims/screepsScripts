@@ -5,6 +5,7 @@ interface AllCache {
 	creeps?: Creep[]
 	towers?: Tower[]
 	structures?: Structure[]
+	extensions?: Extension[]
 	containers?: Container[]
 	extractors?: StructureExtractor[]
 	constructionSites?: ConstructionSite[]
@@ -78,20 +79,28 @@ export default class All {
 		if (!All.cache.structures) {
 			All.cache.structures = Object.keys(Game.structures)
 				.map(key => Game.structures[key]);
+			All.rooms().forEach(room => {
+				const containers = (room.find<Container>(FIND_STRUCTURES, {
+					filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
+				}) || []);
+				All.cache.structures = All.cache.structures || [];
+				All.cache.structures.push(...containers);
+			});
 		}
 
 		return All.cache.structures;
 	}
 
-	static constructionSites(): ConstructionSite[] {
+	static extensions(): Extension[] {
 		All.ensureFreshCache();
 
-		if (!All.cache.constructionSites) {
-			All.cache.constructionSites = Object.keys(Game.constructionSites)
-				.map(key => Game.constructionSites[key]);
+		if (!All.cache.extensions) {
+			All.cache.extensions = <Extension[]>All
+				.structures()
+				.filter((structure: Structure) => structure.structureType == STRUCTURE_EXTENSION);
 		}
 
-		return All.cache.constructionSites;
+		return All.cache.extensions;
 	}
 
 	static containers(): Container[] {
@@ -118,6 +127,17 @@ export default class All {
 		return All.cache.extractors;
 	}
 
+	static constructionSites(): ConstructionSite[] {
+		All.ensureFreshCache();
+
+		if (!All.cache.constructionSites) {
+			All.cache.constructionSites = Object.keys(Game.constructionSites)
+				.map(key => Game.constructionSites[key]);
+		}
+
+		return All.cache.constructionSites;
+	}
+
 	//---//
 
 	//TODO: add caching to methods with suffix 'In'?
@@ -138,6 +158,12 @@ export default class All {
 		return All
 			.towers()
 			.filter((tower: Tower) => tower.room.name == room.name);
+	}
+
+	static extensionsIn(room: Room): Extension[] {
+		return All
+			.extensions()
+			.filter((extension: Extension) => extension.room.name == room.name);
 	}
 
 	static containersIn(room: Room): Container[] {
@@ -179,6 +205,17 @@ export default class All {
 		}
 		return All.cache.droppedEnergyByRoom[room.name];
 	}
+
+	// static tombstonesIn(room: Room): Tomb[] {
+	// 	All.ensureFreshCache();
+	//
+	// 	if (!All.cache.droppedEnergyByRoom[room.name]) {
+	// 		All.cache.droppedEnergyByRoom[room.name] = room.find(FIND_TOMBSTONES, {
+	// 			filter: (resource: Resource) => resource.resourceType == RESOURCE_ENERGY
+	// 		});
+	// 	}
+	// 	return All.cache.droppedEnergyByRoom[room.name];
+	// }
 
 	static sourcesIn(room: Room): Source[] {
 		return room.find(FIND_SOURCES);

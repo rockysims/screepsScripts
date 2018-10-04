@@ -1,7 +1,9 @@
-import Log from "util/Log";
-import Util from "util/Util";
+import Log from 'util/Log';
+import Util from 'util/Util';
 import SpawnRequest from 'SpawnRequest';
-import All from "All";
+import All from 'All';
+
+//TODO: add logic to build roads from room spawn & controller to each source that has a mining container
 
 export default class RoomLogic {
 	static onTick() {
@@ -9,14 +11,12 @@ export default class RoomLogic {
 	}
 
 	static run(room: Room) {
-		let constructingExtensionCount: number = room.find(FIND_CONSTRUCTION_SITES, {
-			filter: (constructionSite: ConstructionSite) => constructionSite.structureType == STRUCTURE_EXTENSION
-		}).length;
+		const constructingExtensions = All
+			.constructionSitesIn(room)
+			.filter((constructionSite: ConstructionSite) => constructionSite.structureType == STRUCTURE_EXTENSION);
 
-		if (constructingExtensionCount <= 0) {
-			let builtExtensions: Extension[] = room.find(FIND_MY_STRUCTURES, {
-				filter: (structure: Structure) => structure.structureType == STRUCTURE_EXTENSION
-			});
+		if (constructingExtensions.length <= 0) {
+			const builtExtensions: Extension[] = All.extensionsIn(room);
 			let maxExtensions: number = Util.maxStructureCountIn(STRUCTURE_EXTENSION, room);
 			if (builtExtensions.length < maxExtensions) {
 				let pos: RoomPosition|undefined;
@@ -25,7 +25,7 @@ export default class RoomLogic {
 				let spawn: Spawn = All.spawnsIn(room)[0];
 				if (spawn) {
 					let origin: RoomPosition = spawn.pos;
-					let n = 1;
+					let n = 9; //skip first 8
 					while (n != -1 && n < 150) {
 						let nthPos: RoomPosition|undefined = Util.getNthClosest(origin, n);
 						if (nthPos) {

@@ -59,7 +59,7 @@ interface ResourceFlipPlans {
 
 export default class BuySellLogic {
 	static onTick() {
-		if (Game.time % 5 != 0) return; //TODO: change back to "% 10" or maybe even increase it?
+		if (Game.time % 10 != 0) return;
 
 		Timer.start("BuySellLogic.onTick()");
 
@@ -70,15 +70,14 @@ export default class BuySellLogic {
 			}
 		}
 
-		//TODO: rename "...SortedByUnitPrice" to "...SortedByAdjustedUnitPrice"
 		const cache: {
 			energyBuyOrdersSortedByNetUnitPrice?: DecoratedEnergyOrder[],
 			energySellOrdersSortedByNetUnitPrice?: DecoratedEnergyOrder[],
-			resourceBuyOrdersSortedByUnitPrice: {[resourceType: string]: DecoratedResourceOrder[]},
-			resourceSellOrdersSortedByUnitPrice: {[resourceType: string]: DecoratedResourceOrder[]}
+			resourceBuyOrdersSortedByAdjustedUnitPrice: {[resourceType: string]: DecoratedResourceOrder[]},
+			resourceSellOrdersSortedByAdjustedUnitPrice: {[resourceType: string]: DecoratedResourceOrder[]}
 		} = {
-			resourceBuyOrdersSortedByUnitPrice: {},
-			resourceSellOrdersSortedByUnitPrice: {}
+			resourceBuyOrdersSortedByAdjustedUnitPrice: {},
+			resourceSellOrdersSortedByAdjustedUnitPrice: {}
 		};
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
@@ -90,7 +89,6 @@ export default class BuySellLogic {
 				considerQueuingPlans(terminal);
 				tickPlans(terminal);
 			}
-
 		}
 
 		Timer.end("BuySellLogic.onTick()");
@@ -108,12 +106,15 @@ export default class BuySellLogic {
 		}
 
 		function tickPlans(terminal: Terminal): boolean {
+			let ticked = false;
+
 			const curPlans = terminal.room.memory['curPlans'] as (EnergyPlan|ResourcePlan)[]|undefined;
 			if (curPlans) {
 				for (let curPlan of curPlans) {
 					if (!curPlan.done) {
 						if (tickPlan(curPlan, terminal)) {
-							return true; //ticked plan
+							ticked = true;
+							break;
 						} else {
 							//done ticking plan
 							curPlan.done = true;
@@ -122,27 +123,61 @@ export default class BuySellLogic {
 				}
 			}
 
-			//TODO: maybe display report on curPlans here?
+			if (!ticked) {
+				delete terminal.room.memory['curPlans'];
 
-			return false; //no plans ticked
+				if (curPlans) {
+					let ordersTotal = 0;
+					let ordersWorked = 0;
+					for (let curPlan of curPlans) {
+						for (let order of curPlan.orders) {
+							ordersTotal++;
+							if (order.result === OK || (order.result && order.result >= OK)) {
+								ordersWorked++;
+							}
+						}
+					}
+
+					Log.log("curPlans orders worked/total: " + ordersWorked + "/" + ordersTotal);
+					Log.log("Done executing curPlans: " + JSON.stringify(curPlans));
+				}
+			}
+
+			return ticked;
 		}
 
 		function tickPlan(plan: EnergyPlan|ResourcePlan, terminal: Terminal): boolean {
 			for (let order of plan.orders) {
 				if (!order.done) {
-					if (tickOrder(order, plan, terminal)) {
-						return true; //ticked order
-					} else {
-						//done ticking order
-						order.done = true;
+					const result = executeOrder(order, plan, terminal);
+					order.result = result;
+					if (result >= OK) { //success
+						if (result === OK) {
+							//executed deal
+							order.done = true;
+							return true; //ticked plan
+						} else {
+							//decided to skip
+							order.done = true;
+							//continue to next order
+						}
+					} else { //fail
+						if (result == ERR_TIRED) {
+							//need to wait
+							return true; //ticked plan
+						} else {
+							//something went wrong
+							order.done = true;
+							//continue to next order
+						}
 					}
 				}
 			}
 
-			return false; //no orders ticked
+			return false; //plan didn't need to tick (no orders needed to tick)
 		}
 
-		function tickOrder(order: EnergyPlanOrder|ResourcePlanOrder, plan: EnergyPlan|ResourcePlan, terminal: Terminal): boolean {
+		function executeOrder(order: EnergyPlanOrder|ResourcePlanOrder, plan: EnergyPlan|ResourcePlan, terminal: Terminal): number {
 			const isEnergyPlan = plan.resourceType == RESOURCE_ENERGY;
 			const planAmount = (isEnergyPlan)
 				? (plan as EnergyPlan).netAmount
@@ -160,23 +195,20 @@ export default class BuySellLogic {
 					? (order as EnergyPlanOrder).netUnitPrice
 					: (order as ResourcePlanOrder).unitPriceWithoutEnergy;
 				const dealStr = ((isInOrder)?"Buy":"Sell") + " " + plan.resourceType + ": "
-					+ format(displayAmount) + "@" + format(displayUnitPrice, 5)
+					+ format(displayAmount) + "@" + format(displayUnitPrice)
 					+ " = $" + format(displayAmount * displayUnitPrice);
 
 				if (isInOrder && terminal.store[plan.resourceType] >= planAmount) {
 					Log.log("SKIP " + dealStr);
-					order.result = 302;
-					return false; //no need to tick order (and haven't used up terminal deal for this tick)
+					return 302;
 				} else {
-					/* //TODO: switch back to this block
+					//*
 					const result = Game.market.deal(order.id, order.amount, terminal.room.name);
 					order.result = result;
 					if (result == OK) {
 						Log.log(dealStr);
-						return true; //ticked order
 					} else if (result == ERR_TIRED) {
 						Log.log("TIRED " + dealStr);
-						return true; //ticked order (wait until not tired)
 					} else {
 						let resultName: string = "UNKNOWN";
 						if (result === ERR_FULL) resultName = "ERR_FULL";
@@ -186,18 +218,16 @@ export default class BuySellLogic {
 						Log.warn("FAILED " + dealStr
 							+ " result: " + result + "(" + resultName + ")"
 							+ " " + order.id);
-						return false; //failed to ticked order
 					}
+					return result;
 					/*/
 					Log.log("WOULD " + dealStr);
-					order.result = 200;
-					return true; //ticked order
+					return OK;
 					//*/
 				}
 			} else {
 				Log.error("No order " + order.id);
-				order.result = -404;
-				return false; //can't tick order (and haven't used up terminal deal for this tick)
+				return -404;
 			}
 		}
 
@@ -216,8 +246,8 @@ export default class BuySellLogic {
 				if (profit > 0) {
 					queuePlans([energyInPlan, energyOutPlan], terminal);
 					Log.log("--- Queued Plans Report ---");
-					Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
-					Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
+					Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount) + " = $" + format(energyInPlan.netPrice));
+					Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount) + " = $" + format(energyOutPlan.netPrice));
 					Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
 				} else {
 					Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
@@ -239,9 +269,9 @@ export default class BuySellLogic {
 						if (energyInPlan.netAmount >= energyUsed) {
 							queuePlans([energyInPlan, resourceInPlan, resourceOutPlan], terminal);
 							Log.log("--- Queued Plans Report ---");
-							Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate, 5) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(energyInPlan.netAmount) + " of it purchased)");
-							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
-							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
+							Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(terminal.store[RESOURCE_ENERGY] || 0) + " already on hand)");
+							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
 							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
 						} else {
 							Log.warn("Failed to flip " + resourceType + " because not enough energy for sale.")
@@ -261,7 +291,7 @@ export default class BuySellLogic {
 					const energyOutPlan = makeEnergyOutPlan(extraEnergy, 10);
 					queuePlans([energyOutPlan], terminal);
 					Log.log("--- Queued Plan Report ---");
-					Log.log("Sell extra energy: " + format(energyOutPlan.netAmount) + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
+					Log.log("Sell extra energy: " + format(energyOutPlan.netAmount) + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount) + " = $" + format(energyOutPlan.netPrice));
 				} else {
 					//TODO: sell everything in terminal (except a little energy) in case flip fails part way through
 				}
@@ -420,9 +450,9 @@ export default class BuySellLogic {
 				return plan;
 			}
 
-			function getResourceBuyOrdersSortedByUnitPrice(resourceType: string, creditsPerEnergy: number): DecoratedResourceOrder[] {
-				//ensure cache.resourceBuyOrdersSortedByUnitPrice[resourceType] exists
-				if (!cache.resourceBuyOrdersSortedByUnitPrice[resourceType]) {
+			function getResourceBuyOrdersSortedByAdjustedUnitPrice(resourceType: string, creditsPerEnergy: number): DecoratedResourceOrder[] {
+				//ensure cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType] exists
+				if (!cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType]) {
 					const resourceBuyOrdersRawAll = Game.market.getAllOrders({type: ORDER_BUY, resourceType: resourceType});
 					const resourceBuyOrdersRaw = (resourceBuyOrdersRawAll.length <= 100)
 						? resourceBuyOrdersRawAll
@@ -450,15 +480,15 @@ export default class BuySellLogic {
 						return b.unitPriceWithEnergy - a.unitPriceWithEnergy; //highest first
 					});
 
-					cache.resourceBuyOrdersSortedByUnitPrice[resourceType] = resourceBuyOrders
+					cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType] = resourceBuyOrders
 				}
 
-				return cache.resourceBuyOrdersSortedByUnitPrice[resourceType];
+				return cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType];
 			}
 
-			function getResourceSellOrdersSortedByUnitPrice(resourceType: string, creditsPerEnergy: number): DecoratedResourceOrder[] {
-				//ensure cache.resourceSellOrdersSortedByUnitPrice[resourceType] exists
-				if (!cache.resourceSellOrdersSortedByUnitPrice[resourceType]) {
+			function getResourceSellOrdersSortedByAdjustedUnitPrice(resourceType: string, creditsPerEnergy: number): DecoratedResourceOrder[] {
+				//ensure cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType] exists
+				if (!cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType]) {
 					const resourceSellOrdersRawAll = Game.market.getAllOrders({type: ORDER_SELL, resourceType: resourceType});
 					const resourceSellOrdersRaw = (resourceSellOrdersRawAll.length <= 100)
 						? resourceSellOrdersRawAll
@@ -486,18 +516,18 @@ export default class BuySellLogic {
 						return a.unitPriceWithEnergy - b.unitPriceWithEnergy; //lowest first
 					});
 
-					cache.resourceSellOrdersSortedByUnitPrice[resourceType] = resourceSellOrders
+					cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType] = resourceSellOrders
 				}
 
-				return cache.resourceSellOrdersSortedByUnitPrice[resourceType];
+				return cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType];
 			}
 
 			function makeResourceInPlan(resourceType: string, maxAmountToBuy: number, maxOrderCount: number, creditsPerEnergy: number): ResourcePlan {
-				const sortedOrders = getResourceSellOrdersSortedByUnitPrice(resourceType, creditsPerEnergy);
+				const sortedOrders = getResourceSellOrdersSortedByAdjustedUnitPrice(resourceType, creditsPerEnergy);
 				return makeResourcePlan(sortedOrders, resourceType, maxAmountToBuy, maxOrderCount);
 			}
 			function makeResourceOutPlan(resourceType: string, maxAmountToBuy: number, maxOrderCount: number, creditsPerEnergy: number): ResourcePlan {
-				const sortedOrders = getResourceBuyOrdersSortedByUnitPrice(resourceType, creditsPerEnergy);
+				const sortedOrders = getResourceBuyOrdersSortedByAdjustedUnitPrice(resourceType, creditsPerEnergy);
 				return makeResourcePlan(sortedOrders, resourceType, maxAmountToBuy, maxOrderCount);
 			}
 			function makeResourcePlan(sortedOrders: DecoratedResourceOrder[], resourceType: string, maxAmount: number, maxOrderCount: number): ResourcePlan {
@@ -530,15 +560,20 @@ export default class BuySellLogic {
 			}
 		}
 
-		function format(n: number, precision?: number) {
-			return n.toFixed(precision || 2)
+		function format(n: number) {
+			let num = n.toFixed(2);
+			if (+num === 0) {
+				num = n.toFixed(5);
+			}
+			return num
 				.replace(/\.(\d*?)0+$/,".$1")
 				.replace(/\.$/, "");
 		}
 	}
 
 	static run(room: Room) {
-		Log.log("ignoring BuySellLogic::run() from room " + room.name);
+		return "ignoring BuySellLogic::run() from room " + room.name;
+		// Log.log("ignoring BuySellLogic::run() from room " + room.name);
 
 		// if (Game.time % 10 != 0) return;
 		// const start = new Date().getTime();

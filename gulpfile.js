@@ -21,8 +21,8 @@ gulp.task('clean:sim', function() {
 	return del('screeps.com/sim/**/*');
 });
 
-gulp.task('clean:world', function() {
-	return del('screeps.com/world/**/*');
+gulp.task('clean:live', function() {
+	return del('screeps.com/live/**/*');
 });
 
 gulp.task("tsify", function () {
@@ -64,10 +64,11 @@ gulp.task('sim', function(done) {
 	sequence('default', 'clean:sim', 'deploy:sim', done);
 });
 
-gulp.task('deploy:world', function() {
+gulp.task('deploy:live', function() {
+	credentials.branch = 'live';
 	return gulp.src("yith/dist/*.js")
-		.pipe(gulp.dest("screeps.com/world"));
+		.pipe(screeps(credentials));
 });
-gulp.task('world', function(done) {
-	sequence('default', 'clean:world', 'deploy:world', done);
+gulp.task('live', function(done) {
+	sequence('default', 'clean:live', 'deploy:live', done);
 });

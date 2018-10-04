@@ -82,6 +82,8 @@ export default class BuySellLogic {
 
 		const lackEnergyThreshold = 50000;
 		const extraEnergyThreshold = 200000;
+		const maxResourcesToConsiderPerTick = 20;
+		const softMaxResourceOrdersToConsiderPerTick = 50;
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 
@@ -89,18 +91,19 @@ export default class BuySellLogic {
 		if (terminal) {
 			const tickedPlans = tickPlans(terminal);
 			if (!tickedPlans) {
-				const start = new Date().getTime();
 				let considerCount = 0;
-				while (considerCount < 20) {
+				while (considerCount < maxResourcesToConsiderPerTick) {
 					considerCount++;
 					considerQueuingPlans(terminal);
-
 					if (tickPlans(terminal)) break;
 
-					const now = new Date().getTime();
-					const duration = now - start;
-					if (duration > 500) {
-						Log.log("Considered for " + duration + "ms so stopping.");
+					let resourceOrdersCached = 0;
+					for (let resourceType of RESOURCES_ALL) {
+						resourceOrdersCached += (cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType] || []).length;
+						resourceOrdersCached += (cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType] || []).length;
+					}
+					if (resourceOrdersCached > softMaxResourceOrdersToConsiderPerTick) {
+						Log.log("resourceOrdersCached is " + resourceOrdersCached + " so done considering things to flip for this tick.");
 						break;
 					}
 				}
@@ -289,7 +292,7 @@ export default class BuySellLogic {
 						if (energyInPlan.netAmount >= energyUsed) {
 							queuePlans([energyInPlan, resourceInPlan, resourceOutPlan], terminal);
 							Log.log("--- Queued Plans Report ---");
-							Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate, 5) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(Math.max(0, (terminal.store[RESOURCE_ENERGY] || 0) - lackEnergyThreshold)) + " available)");
+							Log.log("Energy: " + format(energyInPlan.netAmount) + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice) + " (" + format(Math.max(0, (terminal.store[RESOURCE_ENERGY] || 0) - lackEnergyThreshold)) + " available)");
 							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
 							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
 							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);

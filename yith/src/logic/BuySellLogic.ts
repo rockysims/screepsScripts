@@ -258,8 +258,9 @@ export default class BuySellLogic {
 			const resourceType = RESOURCES_ALL[terminalRoom.memory['resourceIndex']];
 			let profit = 0;
 			if (resourceType === RESOURCE_ENERGY) {
-				const energyOutPlan = makeEnergyOutPlan(terminalSpace, 1);
-				const energyInPlan = makeEnergyInPlan(energyOutPlan.netAmount, 9);
+				const ambitiousEnergyOutPlan = makeEnergyOutPlan(terminalSpace, 1);
+				const energyInPlan = makeEnergyInPlan(ambitiousEnergyOutPlan.netAmount, 1);
+				const energyOutPlan = makeEnergyOutPlan(energyInPlan.netAmount, 1);
 				profit = energyOutPlan.netPrice - energyInPlan.netPrice;
 				if (profit > 0) {
 					queuePlans([energyInPlan, energyOutPlan], terminal);

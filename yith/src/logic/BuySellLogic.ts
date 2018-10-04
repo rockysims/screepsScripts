@@ -2,6 +2,60 @@ import SpawnRequest from 'SpawnRequest';
 import Log from 'util/Log';
 import All from "All";
 import Timer from "util/Timer";
+import Util from "util/Util";
+
+interface DecoratedEnergyOrder {
+	id: string,
+	grossAmount: number,
+	netAmount: number,
+	netUnitPrice: number
+}
+
+interface DecoratedResourceOrder {
+	id: string,
+	amount: number,
+	unitPriceWithoutEnergy: number,
+	unitPriceWithEnergy: number
+	energyCost: number,
+}
+
+interface EnergyPlan {
+	resourceType: string,
+	orders: EnergyPlanOrder[],
+	netAmount: number,
+	netPrice: number,
+	done?: boolean
+}
+interface EnergyPlanOrder {
+	id: string,
+	amount: number,
+	netAmount: number,
+	netUnitPrice: number,
+	result?: number,
+	done?: boolean
+}
+
+interface ResourcePlan {
+	resourceType: string,
+	orders: ResourcePlanOrder[],
+	amount: number,
+	priceWithoutEnergy: number,
+	energyCost: number,
+	done?: boolean
+}
+interface ResourcePlanOrder {
+	id: string,
+	amount: number,
+	unitPriceWithoutEnergy: number,
+	result?: number,
+	done?: boolean
+}
+
+interface ResourceFlipPlans {
+	energyInPlan: EnergyPlan,
+	resourceInPlan: ResourcePlan,
+	resourceOutPlan: ResourcePlan,
+}
 
 export default class BuySellLogic {
 	static onTick() {
@@ -16,47 +70,7 @@ export default class BuySellLogic {
 			}
 		}
 
-		interface DecoratedEnergyOrder {
-			id: string,
-			grossAmount: number,
-			netAmount: number,
-			netUnitPrice: number
-		}
-
-		interface DecoratedResourceOrder {
-			id: string,
-			amount: number,
-			unitPriceWithoutEnergy: number,
-			unitPriceWithEnergy: number
-			energyCost: number,
-		}
-
-		interface EnergyPlan {
-			resourceType: string,
-			orders: EnergyPlanOrder[],
-			netAmount: number,
-			netPrice: number
-		}
-		interface EnergyPlanOrder {
-			id: string,
-			amount: number,
-			netAmount: number,
-			netUnitPrice: number
-		}
-
-		interface ResourcePlan {
-			resourceType: string,
-			orders: ResourcePlanOrder[],
-			amount: number,
-			priceWithoutEnergy: number,
-			energyCost: number
-		}
-		interface ResourcePlanOrder {
-			id: string,
-			amount: number,
-			unitPriceWithoutEnergy: number
-		}
-
+		//TODO: rename "...SortedByUnitPrice" to "...SortedByAdjustedUnitPrice"
 		const cache: {
 			energyBuyOrdersSortedByNetUnitPrice?: DecoratedEnergyOrder[],
 			energySellOrdersSortedByNetUnitPrice?: DecoratedEnergyOrder[],
@@ -67,22 +81,130 @@ export default class BuySellLogic {
 			resourceSellOrdersSortedByUnitPrice: {}
 		};
 
+		//TODO: add handling for case where I don't have enough credits to execute the plans
+
 		const terminal: Terminal|null = Game.getObjectById(Memory['mainTerminalId']);
 		if (terminal) {
+			const tickedPlans = tickPlans(terminal);
+			if (!tickedPlans) {
+				considerQueuingPlans(terminal);
+				tickPlans(terminal);
+			}
+
+		}
+
+		Timer.end("BuySellLogic.onTick()");
+
+		///////////////////////////////////
+
+		function queuePlans(plans: (EnergyPlan|ResourcePlan)[], terminal: Terminal) {
+			if (!terminal.room.memory['curPlans']) {
+				terminal.room.memory['curPlans'] = plans;
+			} else {
+				Log.error("Failed to queue new plans because curPlans still pending.");
+				Log.log("curPlans: " + JSON.stringify(terminal.room.memory['curPlans']));
+				Log.log("new plans: " + JSON.stringify(plans));
+			}
+		}
+
+		function tickPlans(terminal: Terminal): boolean {
+			const curPlans = terminal.room.memory['curPlans'] as (EnergyPlan|ResourcePlan)[]|undefined;
+			if (curPlans) {
+				for (let curPlan of curPlans) {
+					if (!curPlan.done) {
+						if (tickPlan(curPlan, terminal)) {
+							return true; //ticked plan
+						} else {
+							//done ticking plan
+							curPlan.done = true;
+						}
+					}
+				}
+			}
+
+			//TODO: maybe display report on curPlans here?
+
+			return false; //no plans ticked
+		}
+
+		function tickPlan(plan: EnergyPlan|ResourcePlan, terminal: Terminal): boolean {
+			for (let order of plan.orders) {
+				if (!order.done) {
+					if (tickOrder(order, plan, terminal)) {
+						return true; //ticked order
+					} else {
+						//done ticking order
+						order.done = true;
+					}
+				}
+			}
+
+			return false; //no orders ticked
+		}
+
+		function tickOrder(order: EnergyPlanOrder|ResourcePlanOrder, plan: EnergyPlan|ResourcePlan, terminal: Terminal): boolean {
+			const isEnergyPlan = plan.resourceType == RESOURCE_ENERGY;
+			const planAmount = (isEnergyPlan)
+				? (plan as EnergyPlan).netAmount
+				: (plan as ResourcePlan).amount;
+
+			const rawOrder: Order|null = Game.market.getOrderById(order.id);
+			if (rawOrder) {
+				const isInOrder = rawOrder.type === ORDER_SELL;
+
+				//build dealStr
+				const displayAmount = (isEnergyPlan)
+					? (order as EnergyPlanOrder).netAmount
+					: (order as ResourcePlanOrder).amount;
+				const displayUnitPrice = (isEnergyPlan)
+					? (order as EnergyPlanOrder).netUnitPrice
+					: (order as ResourcePlanOrder).unitPriceWithoutEnergy;
+				const dealStr = ((isInOrder)?"Buy":"Sell") + " " + plan.resourceType + ": "
+					+ format(displayAmount) + "@" + format(displayUnitPrice, 5)
+					+ " = $" + format(displayAmount * displayUnitPrice);
+
+				if (isInOrder && terminal.store[plan.resourceType] >= planAmount) {
+					Log.log("SKIP " + dealStr);
+					order.result = 302;
+					return false; //no need to tick order (and haven't used up terminal deal for this tick)
+				} else {
+					/* //TODO: switch back to this block
+					const result = Game.market.deal(order.id, order.amount, terminal.room.name);
+					order.result = result;
+					if (result == OK) {
+						Log.log(dealStr);
+						return true; //ticked order
+					} else if (result == ERR_TIRED) {
+						Log.log("TIRED " + dealStr);
+						return true; //ticked order (wait until not tired)
+					} else {
+						let resultName: string = "UNKNOWN";
+						if (result === ERR_FULL) resultName = "ERR_FULL";
+						if (result === ERR_NOT_OWNER) resultName = "ERR_NOT_OWNER";
+						if (result === ERR_INVALID_ARGS) resultName = "ERR_INVALID_ARGS";
+						if (result === ERR_NOT_ENOUGH_RESOURCES) resultName = "ERR_NOT_ENOUGH_RESOURCES";
+						Log.warn("FAILED " + dealStr
+							+ " result: " + result + "(" + resultName + ")"
+							+ " " + order.id);
+						return false; //failed to ticked order
+					}
+					/*/
+					Log.log("WOULD " + dealStr);
+					order.result = 200;
+					return true; //ticked order
+					//*/
+				}
+			} else {
+				Log.error("No order " + order.id);
+				order.result = -404;
+				return false; //can't tick order (and haven't used up terminal deal for this tick)
+			}
+		}
+
+		function considerQueuingPlans(terminal: Terminal) {
 			const terminalRoom = terminal.room;
-
-			//set terminalSpace
-			let terminalStoreUsed = 0;
-			RESOURCES_ALL.forEach(resourceType => {
-				terminalStoreUsed += terminal.store[resourceType] || 0;
-			});
-			const terminalSpace = terminal.storeCapacity - terminalStoreUsed;
-
+			const terminalSpace = Util.terminalSpace(terminal);
 			const desiredEnergyBuffer = 150000;
-
-
-
-
 
 			terminalRoom.memory['resourceIndex'] = terminalRoom.memory['resourceIndex'] || 0;
 			const resourceType = RESOURCES_ALL[terminalRoom.memory['resourceIndex']];
@@ -92,10 +214,8 @@ export default class BuySellLogic {
 				const energyInPlan = makeEnergyInPlan(energyOutPlan.netAmount, 9);
 				profit = energyOutPlan.netPrice - energyInPlan.netPrice;
 				if (profit > 0) {
-					Log.log("--- Executing ---");
-					executePlan(energyInPlan, terminal);
-					executePlan(energyOutPlan, terminal);
-					Log.log("--- Report ---");
+					queuePlans([energyInPlan, energyOutPlan], terminal);
+					Log.log("--- Queued Plans Report ---");
 					Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
 					Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
 					Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
@@ -103,120 +223,69 @@ export default class BuySellLogic {
 					Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
 				}
 			} else {
-				const energyInPlan = makeEnergyInPlan(terminalSpace, 8);
-				if (energyInPlan.netAmount > 0) {
-					const creditsPerEnergyEstimate = energyInPlan.netPrice / energyInPlan.netAmount;
-					profit = tryToFlip(resourceType, terminal, creditsPerEnergyEstimate);
+				const energyInPlanForEstimate = makeEnergyInPlan(terminalSpace, 8);
+				if (energyInPlanForEstimate.netAmount > 0) {
+					const creditsPerEnergyEstimate = energyInPlanForEstimate.netPrice / energyInPlanForEstimate.netAmount;
+					const plans = planToFlipResource(resourceType, creditsPerEnergyEstimate);
+					const energyInPlan = plans.energyInPlan;
+					const resourceInPlan = plans.resourceInPlan;
+					const resourceOutPlan = plans.resourceOutPlan;
+
+					profit = resourceOutPlan.priceWithoutEnergy
+						- resourceInPlan.priceWithoutEnergy
+						- energyInPlan.netPrice;
+					if (profit > 0) {
+						const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
+						if (energyInPlan.netAmount >= energyUsed) {
+							queuePlans([energyInPlan, resourceInPlan, resourceOutPlan], terminal);
+							Log.log("--- Queued Plans Report ---");
+							Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate, 5) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(energyInPlan.netAmount) + " of it purchased)");
+							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
+							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
+						} else {
+							Log.warn("Failed to flip " + resourceType + " because not enough energy for sale.")
+						}
+					} else {
+						Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
+					}
 				} else {
-					Log.log("Can't buy energy so not trying to flip " + resourceType + ".");
+					Log.warn("No energy for sale so not trying to flip " + resourceType + ".");
 				}
 			}
 			if (profit <= 0) {
 				terminalRoom.memory['resourceIndex'] = (terminalRoom.memory['resourceIndex'] + 1) % RESOURCES_ALL.length;
 
-				//TODO: between flip ticks, sell everything in terminal (except a little energy)
-				//	in case some part of flip fails due to another player filling the order instead of me
 				const extraEnergy = terminal.store[RESOURCE_ENERGY] - desiredEnergyBuffer;
 				if (extraEnergy > 0) {
 					const energyOutPlan = makeEnergyOutPlan(extraEnergy, 10);
-					executePlan(energyOutPlan, terminal);
+					queuePlans([energyOutPlan], terminal);
+					Log.log("--- Queued Plan Report ---");
 					Log.log("Sell extra energy: " + format(energyOutPlan.netAmount) + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
+				} else {
+					//TODO: sell everything in terminal (except a little energy) in case flip fails part way through
 				}
 			}
 
-			function tryToFlip(resourceType: string, terminal: Terminal, creditsPerEnergyEstimate: number): number {
+			///////////////////////////////////
+
+			function planToFlipResource(resourceType: string, creditsPerEnergyEstimate: number): ResourceFlipPlans {
 				const ambitiousResourceOutPlan = makeResourceOutPlan(resourceType, terminalSpace, 1, creditsPerEnergyEstimate);
 				const ambitiousResourceInPlan = makeResourceInPlan(resourceType, ambitiousResourceOutPlan.amount, 1, creditsPerEnergyEstimate);
 				const ambitiousEnergyCost = ambitiousResourceInPlan.energyCost + ambitiousResourceOutPlan.energyCost;
-				const ambitiousProfit = ambitiousResourceOutPlan.priceWithoutEnergy
-					- ambitiousResourceInPlan.priceWithoutEnergy
-					- ambitiousEnergyCost * creditsPerEnergyEstimate;
-				if (ambitiousProfit > 0) {
-					//remake plans (leaving space for the energy needed this time and limiting Out.amount to available In.amount)
-					const amountToFlip = Math.min(terminalSpace - ambitiousEnergyCost, ambitiousResourceInPlan.amount);
-					const resourceOutPlan = makeResourceOutPlan(resourceType, amountToFlip, 1, creditsPerEnergyEstimate);
-					const resourceInPlan = makeResourceInPlan(resourceType, resourceOutPlan.amount, 1, creditsPerEnergyEstimate);
-					const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
-					const energyToBuy = Math.max(0, energyUsed - terminal.store[RESOURCE_ENERGY]);
-					const energyInPlan = makeEnergyInPlan(energyToBuy, 8);
-					const energyOnHandUsed = energyUsed - energyInPlan.netAmount;
-					const profit = resourceOutPlan.priceWithoutEnergy
-						- resourceInPlan.priceWithoutEnergy
-						- energyInPlan.netPrice
-						- energyOnHandUsed * creditsPerEnergyEstimate;
-					if (profit > 0 && energyInPlan.netAmount >= energyToBuy) {
-						//execute
-						Log.log("--- Executing ---");
-						executePlan(energyInPlan, terminal);
-						executePlan(resourceInPlan, terminal);
-						executePlan(resourceOutPlan, terminal);
-						Log.log("--- Report ---");
-						Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate, 5) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(energyInPlan.netAmount) + " of it purchased)");
-						Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
-						Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
-						Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
 
-						return profit;
-					} else {
-						Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
-						return profit;
-					}
-				} else {
-					Log.log("Profit in theory: $" + format(ambitiousProfit) + " on " + resourceType + " so not flipping.");
-					return ambitiousProfit;
-				}
-			}
+				//remake plans (leaving space for the energy needed this time and limiting Out.amount to available In.amount)
+				const amountToFlip = Math.min(terminalSpace - ambitiousEnergyCost, ambitiousResourceInPlan.amount);
+				const resourceOutPlan = makeResourceOutPlan(resourceType, amountToFlip, 1, creditsPerEnergyEstimate);
+				const resourceInPlan = makeResourceInPlan(resourceType, resourceOutPlan.amount, 1, creditsPerEnergyEstimate);
+				const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
+				const energyInPlan = makeEnergyInPlan(energyUsed, 8);
 
-			function executePlan(plan: EnergyPlan|ResourcePlan, terminal: Terminal, ignoreAvailableResource?: boolean) {
-				//Log.log("Not executing plan orders " + plan.orders.length);
-
-				//TODO: fix bug where only first deal goes through (or at least I think that's the issue... maybe target terminal is tired?)
-				if (plan.orders.length > 0) {
-					const isEnergyPlan = plan.resourceType == RESOURCE_ENERGY;
-					const planAmount = (isEnergyPlan)
-						? (plan as EnergyPlan).netAmount
-						: (plan as ResourcePlan).amount;
-
-					for (let order of plan.orders) {
-						const rawOrder: Order|null = Game.market.getOrderById(order.id);
-						if (rawOrder) {
-							const isInOrder = rawOrder.type === ORDER_SELL;
-
-							//build dealStr
-							const displayAmount = (isEnergyPlan)
-								? (order as EnergyPlanOrder).netAmount
-								: (order as ResourcePlanOrder).amount;
-							const displayUnitPrice = (isEnergyPlan)
-								? (order as EnergyPlanOrder).netUnitPrice
-								: (order as ResourcePlanOrder).unitPriceWithoutEnergy;
-							const dealStr = ((isInOrder)?"Buy":"Sell") + " " + plan.resourceType + ": "
-								+ format(displayAmount) + "@" + format(displayUnitPrice, 5)
-								+ " = $" + format(displayAmount * displayUnitPrice);
-
-							if (isInOrder && !ignoreAvailableResource && terminal.store[plan.resourceType] >= planAmount) {
-								Log.log("SKIP " + dealStr);
-							} else {
-
-								/* //TODO: switch back to this block
-								const result = Game.market.deal(order.id, order.amount, terminal.room.name);
-								if (result == OK) {
-									Log.log(dealStr);
-								} else {
-									Log.warn("FAILED " + dealStr + " result: " + result + " " + order.id);
-								}
-								/*/
-								Log.log("WOULD " + dealStr);
-								//*/
-							}
-						} else Log.error("No order " + order.id);
-					}
-				} //else no orders
-			}
-
-			function format(n: number, precision?: number) {
-				return n.toFixed(precision || 2)
-					.replace(/\.(\d*?)0+$/,".$1")
-					.replace(/\.$/, "");
+				return {
+					energyInPlan: energyInPlan,
+					resourceInPlan: resourceInPlan,
+					resourceOutPlan: resourceOutPlan,
+				};
 			}
 
 			function getEnergyBuyOrdersSortedByNetUnitPrice(): DecoratedEnergyOrder[] {
@@ -461,7 +530,11 @@ export default class BuySellLogic {
 			}
 		}
 
-		Timer.end("BuySellLogic.onTick()");
+		function format(n: number, precision?: number) {
+			return n.toFixed(precision || 2)
+				.replace(/\.(\d*?)0+$/,".$1")
+				.replace(/\.$/, "");
+		}
 	}
 
 	static run(room: Room) {

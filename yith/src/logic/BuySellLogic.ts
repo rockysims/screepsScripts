@@ -80,14 +80,30 @@ export default class BuySellLogic {
 			resourceSellOrdersSortedByAdjustedUnitPrice: {}
 		};
 
+		const lackEnergyThreshold = 50000;
+		const extraEnergyThreshold = 200000;
+
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 
 		const terminal: Terminal|null = Game.getObjectById(Memory['mainTerminalId']);
 		if (terminal) {
 			const tickedPlans = tickPlans(terminal);
 			if (!tickedPlans) {
-				considerQueuingPlans(terminal);
-				tickPlans(terminal);
+				const start = new Date().getTime();
+				let considerCount = 0;
+				while (considerCount < 20) {
+					considerCount++;
+					considerQueuingPlans(terminal);
+
+					if (tickPlans(terminal)) break;
+
+					const now = new Date().getTime();
+					const duration = now - start;
+					if (duration > 500) {
+						Log.log("Considered for " + duration + "ms so stopping.");
+						break;
+					}
+				}
 			}
 		}
 
@@ -195,10 +211,13 @@ export default class BuySellLogic {
 					? (order as EnergyPlanOrder).netUnitPrice
 					: (order as ResourcePlanOrder).unitPriceWithoutEnergy;
 				const dealStr = ((isInOrder)?"Buy":"Sell") + " " + plan.resourceType + ": "
-					+ format(displayAmount) + "@" + format(displayUnitPrice)
+					+ format(displayAmount) + "@" + format(displayUnitPrice, 5)
 					+ " = $" + format(displayAmount * displayUnitPrice);
 
-				if (isInOrder && terminal.store[plan.resourceType] >= planAmount) {
+				const enoughOnHand = (isEnergyPlan)
+					? terminal.store[plan.resourceType] >= planAmount + lackEnergyThreshold
+					: terminal.store[plan.resourceType] >= planAmount;
+				if (isInOrder && enoughOnHand) {
 					Log.log("SKIP " + dealStr);
 					return 302;
 				} else {
@@ -234,7 +253,6 @@ export default class BuySellLogic {
 		function considerQueuingPlans(terminal: Terminal) {
 			const terminalRoom = terminal.room;
 			const terminalSpace = Util.terminalSpace(terminal);
-			const desiredEnergyBuffer = 150000;
 
 			terminalRoom.memory['resourceIndex'] = terminalRoom.memory['resourceIndex'] || 0;
 			const resourceType = RESOURCES_ALL[terminalRoom.memory['resourceIndex']];
@@ -246,9 +264,10 @@ export default class BuySellLogic {
 				if (profit > 0) {
 					queuePlans([energyInPlan, energyOutPlan], terminal);
 					Log.log("--- Queued Plans Report ---");
-					Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount) + " = $" + format(energyInPlan.netPrice));
-					Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount) + " = $" + format(energyOutPlan.netPrice));
+					Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
+					Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
 					Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
+					Log.log("--- --- ---");
 				} else {
 					Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
 				}
@@ -269,10 +288,11 @@ export default class BuySellLogic {
 						if (energyInPlan.netAmount >= energyUsed) {
 							queuePlans([energyInPlan, resourceInPlan, resourceOutPlan], terminal);
 							Log.log("--- Queued Plans Report ---");
-							Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(terminal.store[RESOURCE_ENERGY] || 0) + " already on hand)");
-							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount) + " = $" + format(resourceInPlan.priceWithoutEnergy));
-							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
+							Log.log("Energy: " + format(energyUsed) + "@" + format(creditsPerEnergyEstimate, 5) + " = $" + format(energyUsed*creditsPerEnergyEstimate) + " (" + format(Math.max(0, (terminal.store[RESOURCE_ENERGY] || 0) - lackEnergyThreshold)) + " available)");
+							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
 							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
+							Log.log("--- --- ---");
 						} else {
 							Log.warn("Failed to flip " + resourceType + " because not enough energy for sale.")
 						}
@@ -286,12 +306,13 @@ export default class BuySellLogic {
 			if (profit <= 0) {
 				terminalRoom.memory['resourceIndex'] = (terminalRoom.memory['resourceIndex'] + 1) % RESOURCES_ALL.length;
 
-				const extraEnergy = terminal.store[RESOURCE_ENERGY] - desiredEnergyBuffer;
+				const extraEnergy = terminal.store[RESOURCE_ENERGY] - extraEnergyThreshold;
 				if (extraEnergy > 0) {
 					const energyOutPlan = makeEnergyOutPlan(extraEnergy, 10);
 					queuePlans([energyOutPlan], terminal);
 					Log.log("--- Queued Plan Report ---");
-					Log.log("Sell extra energy: " + format(energyOutPlan.netAmount) + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount) + " = $" + format(energyOutPlan.netPrice));
+					Log.log("Sell extra energy: " + format(energyOutPlan.netAmount) + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
+					Log.log("--- --- ---");
 				} else {
 					//TODO: sell everything in terminal (except a little energy) in case flip fails part way through
 				}
@@ -560,11 +581,14 @@ export default class BuySellLogic {
 			}
 		}
 
-		function format(n: number) {
-			let num = n.toFixed(2);
-			if (+num === 0) {
-				num = n.toFixed(5);
+		function format(n: number, precision?: number) {
+			precision = (precision === undefined)?2:precision;
+			let num = n.toFixed(precision);
+			while (+num === 0 && precision < 10) {
+				precision += 2;
+				num = n.toFixed(precision);
 			}
+
 			return num
 				.replace(/\.(\d*?)0+$/,".$1")
 				.replace(/\.$/, "");

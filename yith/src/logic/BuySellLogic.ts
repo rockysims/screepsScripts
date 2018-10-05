@@ -53,7 +53,6 @@ interface ResourcePlanOrder {
 }
 
 interface ResourceFlipPlans {
-	energyInPlan: EnergyPlan,
 	resourceInPlan: ResourcePlan,
 	resourceOutPlan: ResourcePlan,
 }
@@ -81,6 +80,7 @@ export default class BuySellLogic {
 			resourceSellOrdersSortedByAdjustedUnitPrice: {}
 		};
 
+		const dryRunMode = false;
 		const lackEnergyThreshold = 50000;
 		const extraEnergyThreshold = 200000;
 		const maxResourcesToConsiderPerTick = RESOURCES_ALL.length;
@@ -221,34 +221,34 @@ export default class BuySellLogic {
 					+ " = $" + format(displayAmount * displayUnitPrice);
 
 				const enoughOnHand = (isEnergyPlan)
-					? terminal.store[plan.resourceType] || 0 >= planAmount + lackEnergyThreshold
-					: terminal.store[plan.resourceType] || 0 >= planAmount;
+					? (terminal.store[plan.resourceType] || 0) >= planAmount + lackEnergyThreshold
+					: (terminal.store[plan.resourceType] || 0) >= planAmount;
 				if (isInOrder && enoughOnHand) {
 					Log.log("SKIP " + dealStr);
 					return 302;
 				} else {
-					//*
-					const result = Game.market.deal(order.id, order.amount, terminal.room.name);
-					order.result = result;
-					if (result == OK) {
-						Log.log(dealStr);
-					} else if (result == ERR_TIRED) {
-						Log.log("TIRED " + dealStr);
-					} else {
-						let resultName: string = "UNKNOWN";
-						if (result === ERR_FULL) resultName = "ERR_FULL";
-						if (result === ERR_NOT_OWNER) resultName = "ERR_NOT_OWNER";
-						if (result === ERR_INVALID_ARGS) resultName = "ERR_INVALID_ARGS";
-						if (result === ERR_NOT_ENOUGH_RESOURCES) resultName = "ERR_NOT_ENOUGH_RESOURCES";
-						Log.warn("FAILED " + dealStr
-							+ " result: " + result + "(" + resultName + ")"
-							+ " " + order.id);
+					if (!dryRunMode) {
+						const result = Game.market.deal(order.id, order.amount, terminal.room.name);
+						order.result = result;
+						if (result == OK) {
+							Log.log(dealStr);
+						} else if (result == ERR_TIRED) {
+							Log.log("TIRED " + dealStr);
+						} else {
+							let resultName: string = "UNKNOWN";
+							if (result === ERR_FULL) resultName = "ERR_FULL";
+							if (result === ERR_NOT_OWNER) resultName = "ERR_NOT_OWNER";
+							if (result === ERR_INVALID_ARGS) resultName = "ERR_INVALID_ARGS";
+							if (result === ERR_NOT_ENOUGH_RESOURCES) resultName = "ERR_NOT_ENOUGH_RESOURCES";
+							Log.warn("FAILED " + dealStr
+								+ " result: " + result + "(" + resultName + ")"
+								+ " " + order.id);
+						}
+						return result;
+					} else { //dryRunMode
+						Log.log("WOULD " + dealStr);
+						return OK;
 					}
-					return result;
-					/*/
-					Log.log("WOULD " + dealStr);
-					return OK;
-					//*/
 				}
 			} else {
 				Log.error("No order " + order.id);
@@ -280,32 +280,56 @@ export default class BuySellLogic {
 					Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
 				}
 			} else {
-				const energyInPlanForEstimate = makeEnergyInPlan(terminalSpace, 8);
-				if (energyInPlanForEstimate.netAmount > 0) {
-					const creditsPerEnergyEstimate = energyInPlanForEstimate.netPrice / energyInPlanForEstimate.netAmount;
-					const plans = planToFlipResource(resourceType, creditsPerEnergyEstimate);
-					const energyInPlan = plans.energyInPlan;
-					const resourceInPlan = plans.resourceInPlan;
-					const resourceOutPlan = plans.resourceOutPlan;
+				const energyOnHand = terminal.store[RESOURCE_ENERGY] || 0;
+				const availableEnergyOnHand = Math.max(0, energyOnHand - lackEnergyThreshold);
+				const preferPurchasedEnergy = availableEnergyOnHand <= 25000;
+				const energyPlanForEstimate = (preferPurchasedEnergy)
+					? makeEnergyInPlan(terminalSpace, 8)
+					: makeEnergyOutPlan(availableEnergyOnHand, 8);
+				if (energyPlanForEstimate.netAmount > 0) {
+					const creditsPerEnergyEstimate = energyPlanForEstimate.netPrice / energyPlanForEstimate.netAmount;
+					const flipPlans = planToFlipResource(resourceType, creditsPerEnergyEstimate);
+					const resourceInPlan = flipPlans.resourceInPlan;
+					const resourceOutPlan = flipPlans.resourceOutPlan;
+					const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
+					const purchaseEnergy = preferPurchasedEnergy || availableEnergyOnHand < energyUsed;
+					const energyPlan = (purchaseEnergy)
+						? makeEnergyInPlan(energyUsed, 8)
+						: makeEnergyOutPlan(energyUsed, 8);
 
 					profit = resourceOutPlan.priceWithoutEnergy
 						- resourceInPlan.priceWithoutEnergy
-						- energyInPlan.netPrice;
+						- energyPlan.netPrice;
 					if (profit > 0) {
-						const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
-						if (energyInPlan.netAmount >= energyUsed) {
-							queuePlans([energyInPlan, resourceInPlan, resourceOutPlan], terminal);
+						if (energyPlan.netAmount >= energyUsed) {
+							const plansToQueue = (purchaseEnergy)
+								? [energyPlan, resourceInPlan, resourceOutPlan]
+								: [resourceInPlan, resourceOutPlan];
+							queuePlans(plansToQueue, terminal);
 							Log.log("--- Queued Plans Report ---");
-							Log.log("Energy: " + format(energyInPlan.netAmount) + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice) + " (" + format(Math.max(0, (terminal.store[RESOURCE_ENERGY] || 0) - lackEnergyThreshold)) + " available)");
+							if (purchaseEnergy) {
+								Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+							} else {
+								Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+							}
 							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
 							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
 							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
 							Log.log("--- --- ---");
 						} else {
-							Log.warn("Failed to flip " + resourceType + " because not enough energy for sale.")
+							Log.warn("Failed to flip " + resourceType + " because not enough energy on market." + ((purchaseEnergy)?"":" !purchaseEnergy"));
 						}
 					} else {
+						Log.log("--- Not Flipping Report ---");
+						if (purchaseEnergy) {
+							Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+						} else {
+							Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+						}
+						Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+						Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
 						Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
+						Log.log("--- --- ---");
 					}
 				} else {
 					Log.warn("No energy for sale so not trying to flip " + resourceType + ".");
@@ -337,11 +361,8 @@ export default class BuySellLogic {
 				const amountToFlip = Math.min(terminalSpace - ambitiousEnergyCost, ambitiousResourceInPlan.amount);
 				const resourceOutPlan = makeResourceOutPlan(resourceType, amountToFlip, 1, creditsPerEnergyEstimate);
 				const resourceInPlan = makeResourceInPlan(resourceType, resourceOutPlan.amount, 1, creditsPerEnergyEstimate);
-				const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
-				const energyInPlan = makeEnergyInPlan(energyUsed, 8);
 
 				return {
-					energyInPlan: energyInPlan,
 					resourceInPlan: resourceInPlan,
 					resourceOutPlan: resourceOutPlan,
 				};

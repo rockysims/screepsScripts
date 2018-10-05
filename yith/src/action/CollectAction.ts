@@ -4,12 +4,12 @@ import Util from 'util/Util';
 
 export default class CollectAction extends AbstractAction {
 	static type: string = 'collect';
-	containerId: string;
+	targetId: string;
 	child: MoveToRangeAction|undefined;
 
-	constructor(container: StructureContainer) {
+	constructor(target: StructureContainer|Tombstone) {
 		super(CollectAction.type);
-		this.containerId = container.id;
+		this.targetId = target.id;
 	}
 
 	static run(creep: Creep, action: CollectAction): boolean|number {
@@ -19,18 +19,18 @@ export default class CollectAction extends AbstractAction {
 			else action.child = undefined;
 		}
 
-		const container: StructureContainer|undefined = Game.getObjectById(action.containerId) || undefined;
+		const target: StructureContainer|Tombstone|undefined = Game.getObjectById(action.targetId) || undefined;
 		const creepEnergy = creep.carry.energy || 0;
-		if (container
-			&& Util.getEnergy(container) > 0
+		if (target
+			&& Util.getEnergy(target) > 0
 			&& creepEnergy < creep.carryCapacity
 		) {
-			const result: number = creep.withdraw(container, RESOURCE_ENERGY);
+			const result: number = creep.withdraw(target, RESOURCE_ENERGY);
 			if (result == OK) {
 				return false; //can withdraw all available at once so done collecting after first success
 			} else if (result == ERR_NOT_IN_RANGE) {
 				action.child = new MoveToRangeAction(
-					Util.posOf(container),
+					Util.posOf(target),
 					'#00ffff',
 					1
 				);

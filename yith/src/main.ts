@@ -109,7 +109,7 @@ export const loop = function(): void {
 			let memory: {role: string} = spawnRequest.memory;
 			Memory['nextCreepId'] = Memory['nextCreepId'] || 0;
 			let result = spawn.spawnCreep(body,  memory.role + " #" + Memory['nextCreepId'], {memory: memory});
-			if (typeof(result) == 'string') {
+			if (result == OK) {
 				Memory['nextCreepId']++;
 				let pos = new RoomPosition(spawn.pos.x + 1, spawn.pos.y, room.name);
 				room.visual.text(memory.role, pos);

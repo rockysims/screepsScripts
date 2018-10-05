@@ -105,7 +105,7 @@ export default class Action {
 		));
 	}
 
-	static collect(creep: Creep, container: StructureContainer) {
+	static collect(creep: Creep, container: StructureContainer|Tombstone) {
 		ActionQ.push(creep, new CollectAction(
 			container
 		));
@@ -154,9 +154,9 @@ export default class Action {
 
 		//console.log('fillEnergy() duration A: ', new Date().getTime() - start);
 
-		// const tombstonesWithEnergy: Resource[] = All
-		// 	.tombstonesIn(creep.room)
-		// 	.filter(resource => resource.amount >= creep.carryCapacity * 0.75);
+		const tombstonesWithEnergy: Tombstone[] = All
+			.tombstonesIn(creep.room)
+			.filter(tombstone => tombstone.store[RESOURCE_ENERGY] >= creep.carryCapacity * 0.75);
 
 		const energyDrops: Resource[] = All
 			.droppedEnergyIn(creep.room)
@@ -170,19 +170,20 @@ export default class Action {
 			.sourcesIn(creep.room)
 			.filter((source: Source) => source.energy > 0);
 
-		const targets: (Resource|StructureContainer|Source)[] = [];
-		targets.push(... energyDrops);
-		targets.push(... containers);
+		const targets: (Tombstone|Resource|StructureContainer|Source)[] = [];
+		targets.push(... tombstonesWithEnergy);
+		if (targets.length == 0) targets.push(... energyDrops);
+		if (targets.length == 0) targets.push(... containers);
 		if (targets.length == 0) targets.push(... sources);
 
 		//sort targets (lowest range last)
-		const sortedTargets = targets.sort((a: (Resource|StructureContainer|Source), b: (Resource|StructureContainer|Source)) => {
+		const sortedTargets = targets.sort((a: (Tombstone|Resource|StructureContainer|Source), b: (Tombstone|Resource|StructureContainer|Source)) => {
 			return b.pos.getRangeTo(creep.pos) - a.pos.getRangeTo(creep.pos)
 		});
 
 		//console.log('fillEnergy() duration B: ', new Date().getTime() - start);
 
-		let target: Resource|StructureContainer|Source|undefined;
+		let target: Tombstone|Resource|StructureContainer|Source|undefined;
 		while (sortedTargets.length > 0 && !target) {
 			const closestTarget = sortedTargets.pop();
 			//find path from target to creep (not vic-versa) so that surrounded targets fail fast
@@ -195,14 +196,16 @@ export default class Action {
 		//console.log('fillEnergy() duration D: ', new Date().getTime() - start);
 		if (target) {
 			//console.log('fillEnergy() duration E: ', new Date().getTime() - start);
-			if ((target as any)['resourceType']) {
+			if ((target as any)['deathTime']) {
+				Action.collect(creep, target as Tombstone);
+			} else if ((target as any)['resourceType']) {
 				Action.pickup(creep, target as Resource);
 			} else if ((target as any)['ticksToDecay']) {
 				Action.collect(creep, target as StructureContainer);
 			} else if (!(target as any)['structureType']) {
 				Action.harvest(creep, target as Source);
 			} else {
-				Log.error('Action::fillEnergy() target truthy but does not match dropped/container/source at ' + target.pos.x + ', ' + target.pos.y);
+				Log.error('Action::fillEnergy() target truthy but does not match tombstone/dropped/container/source at ' + target.pos.x + ', ' + target.pos.y);
 			}
 			//console.log('fillEnergy() duration F: ', new Date().getTime() - start);
 		} else {

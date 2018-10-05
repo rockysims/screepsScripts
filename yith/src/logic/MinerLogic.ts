@@ -5,14 +5,21 @@ import All from 'All';
 import SpawnRequest from 'SpawnRequest';
 import Store from 'util/Store';
 import Mem from "util/Mem";
+import ActionQ from "action/ActionQ";
 
 export default class MinerLogic {
 	static onTick() {}
 
 	static run(creep: Creep) {
-		if (Action.continue(creep)) return;
-
 		const mem = Mem.of(creep);
+		if (Game.time % 10 == 0
+			&& !Game.getObjectById(mem['targetId'])
+			&& !Game.getObjectById(mem['targetSiteId'])
+		) {
+			ActionQ.clear(creep);
+		} else {
+			if (Action.continue(creep)) return;
+		}
 
 		//try to set mem['sourceId'] && source
 		if (!mem['sourceId']) {
@@ -44,14 +51,15 @@ export default class MinerLogic {
 				const targets = source.pos.findInRange(FIND_STRUCTURES, 1, { //not FIND_MY_STRUCTURES and not range 0
 					filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
 				}) as StructureContainer[];
-				console.log('targets: ', targets);
 
 				//fix for bug where onContainerBuilt places 2 containers (seems to be bug in screeps?)
-				while (targets.length > 1) {
-					const t = targets.pop();
-					if (t) t.destroy();
-				}
-				console.log('after pop()s. targets: ', targets);
+				//	seems to be fixed now so commenting it out
+				// console.log('targets: ', targets);
+				// while (targets.length > 1) {
+				// 	const t = targets.pop();
+				// 	if (t) t.destroy();
+				// }
+				// console.log('after pop()s. targets: ', targets);
 
 				const target = targets[0];
 				if (target) {

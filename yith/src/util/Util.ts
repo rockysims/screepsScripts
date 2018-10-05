@@ -162,43 +162,14 @@ export default class Util {
 	}
 
 	static getEnergy(thing: Structure|{energy: number}|{store: StoreDefinition}): number {
+		const anyThing = thing as any;
 		let energy = 0;
-		if (thing.hasOwnProperty('energy')) {
-			energy = (thing as {energy: number})['energy'];
-		} else if (thing.hasOwnProperty('store')) {
-			energy = (thing as {store: StoreDefinition})['store'][RESOURCE_ENERGY] || 0;
+		if (anyThing['energy']) {
+			energy = anyThing['energy'];
+		} else if (anyThing['store']) {
+			energy = anyThing['store'][RESOURCE_ENERGY] || 0;
 		}
 		return energy;
-	}
-
-	static getCapacity(structure: Structure): number {
-		switch (structure.structureType) {
-			case STRUCTURE_SPAWN:
-				return (structure as StructureSpawn).energyCapacity;
-			case STRUCTURE_EXTENSION:
-				return (structure as StructureExtension).energyCapacity;
-			case STRUCTURE_TOWER:
-				return (structure as StructureTower).energyCapacity;
-			case STRUCTURE_LINK:
-				return (structure as StructureLink).energyCapacity;
-			case STRUCTURE_CONTAINER:
-				return (structure as StructureContainer).storeCapacity;
-			case STRUCTURE_STORAGE:
-				return (structure as StructureStorage).storeCapacity;
-			case STRUCTURE_TERMINAL:
-				return (structure as StructureTerminal).storeCapacity;
-			default:
-				Log.error('Util::getEnergy() failed to get energy for structureType: ' + structure.structureType);
-				return 0;
-		}
-	}
-
-	static terminalSpace(terminal: StructureTerminal) {
-		let terminalStoreUsed = 0;
-		RESOURCES_ALL.forEach(resourceType => {
-			terminalStoreUsed += terminal.store[resourceType] || 0;
-		});
-		return terminal.storeCapacity - terminalStoreUsed;
 	}
 
 	/**

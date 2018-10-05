@@ -1,23 +1,24 @@
+import Mem from "util/Mem";
 import Log from "util/Log";
 import All from "All";
 
 export default class Util {
-	static costOf(bodyParts: Array<string>): number {
-		return bodyParts.reduce((carry: number, bodyPart: string) => carry + BODYPART_COST[bodyPart], 0);
+	static costOf(bodyParts: BodyPartConstant[]): number {
+		return bodyParts.reduce((carry: number, bodyPart: BodyPartConstant) => carry + BODYPART_COST[bodyPart], 0);
 	}
 
-	static generateBodyFromSet(set: string[], energyAvailable: number) {
+	static generateBodyFromSet(set: BodyPartConstant[], energyAvailable: number) {
 		const body = new Array(Math.floor(energyAvailable / Util.costOf(set)))
 			.fill(set)
 			.reduce((carry, s) => carry.concat(s), [])
-			.sort((a: string, b: string) => set.indexOf(a) - set.indexOf(b));
+			.sort((a: BodyPartConstant, b: BodyPartConstant) => set.indexOf(a) - set.indexOf(b));
 		return body;
 	}
 
 	static countByRole(creeps: Array<Creep>): {[role: string]: number} {
 		let countByRole: {[role: string]: number} = {};
 		creeps.forEach((creep: Creep) => {
-			let role = creep.memory.role || '?';
+			let role = Mem.of(creep)['role'] as string || '?';
 			countByRole[role] = countByRole[role] || 0;
 			countByRole[role]++;
 		});
@@ -28,7 +29,7 @@ export default class Util {
 		return Util.countByRole(All.creepsIn(room))[role] || 0;
 	}
 
-	static maxStructureCountIn(type: string, room: Room): number {
+	static maxStructureCountIn(type: BuildableStructureConstant, room: Room): number {
 		let structureTypeMaxByLevel: {[level: number]: number} = CONTROLLER_STRUCTURES[type] || {};
 		if (room.controller) {
 			return structureTypeMaxByLevel[room.controller.level] || 0;
@@ -160,51 +161,39 @@ export default class Util {
 		return (typeof position == 'object')?(<any>position)['pos']:position;
 	}
 
-	static getEnergy(structure: Structure): number {
-		switch (structure.structureType) {
-			case STRUCTURE_SPAWN:
-				return (structure as Spawn).energy;
-			case STRUCTURE_EXTENSION:
-				return (structure as Extension).energy;
-			case STRUCTURE_TOWER:
-				return (structure as Tower).energy;
-			case STRUCTURE_LINK:
-				return (structure as Link).energy;
-			case STRUCTURE_CONTAINER:
-				return (structure as Container).store[RESOURCE_ENERGY] || 0;
-			case STRUCTURE_STORAGE:
-				return (structure as Storage).store[RESOURCE_ENERGY] || 0;
-			case STRUCTURE_TERMINAL:
-				return (structure as Terminal).store[RESOURCE_ENERGY] || 0;
-			default:
-				Log.error('Util::getEnergy() failed to get energy for structureType: ' + structure.structureType);
-				return 0;
+	static getEnergy(thing: Structure|{energy: number}|{store: StoreDefinition}): number {
+		let energy = 0;
+		if (thing.hasOwnProperty('energy')) {
+			energy = (thing as {energy: number})['energy'];
+		} else if (thing.hasOwnProperty('store')) {
+			energy = (thing as {store: StoreDefinition})['store'][RESOURCE_ENERGY] || 0;
 		}
+		return energy;
 	}
 
 	static getCapacity(structure: Structure): number {
 		switch (structure.structureType) {
 			case STRUCTURE_SPAWN:
-				return (structure as Spawn).energyCapacity;
+				return (structure as StructureSpawn).energyCapacity;
 			case STRUCTURE_EXTENSION:
-				return (structure as Extension).energyCapacity;
+				return (structure as StructureExtension).energyCapacity;
 			case STRUCTURE_TOWER:
-				return (structure as Tower).energyCapacity;
+				return (structure as StructureTower).energyCapacity;
 			case STRUCTURE_LINK:
-				return (structure as Link).energyCapacity;
+				return (structure as StructureLink).energyCapacity;
 			case STRUCTURE_CONTAINER:
-				return (structure as Container).storeCapacity;
+				return (structure as StructureContainer).storeCapacity;
 			case STRUCTURE_STORAGE:
-				return (structure as Storage).storeCapacity;
+				return (structure as StructureStorage).storeCapacity;
 			case STRUCTURE_TERMINAL:
-				return (structure as Terminal).storeCapacity;
+				return (structure as StructureTerminal).storeCapacity;
 			default:
 				Log.error('Util::getEnergy() failed to get energy for structureType: ' + structure.structureType);
 				return 0;
 		}
 	}
 
-	static terminalSpace(terminal: Terminal) {
+	static terminalSpace(terminal: StructureTerminal) {
 		let terminalStoreUsed = 0;
 		RESOURCES_ALL.forEach(resourceType => {
 			terminalStoreUsed += terminal.store[resourceType] || 0;
@@ -212,8 +201,77 @@ export default class Util {
 		return terminal.storeCapacity - terminalStoreUsed;
 	}
 
-	static isFull(structure: Structure) {
-		//TODO: handle case where structure is full but not full of energy (at least not entirely)
-		return Util.getEnergy(structure) >= Util.getCapacity(structure);
+	/**
+	 * Check how much space is used in thing's reservoir (reservoir that can hold resourceType).
+	 * If resourceType is omitted, 'reservoir' in question is reservoir that could be filled with any resourceType.
+	 */
+	static usedSpaceIn(thing: any, resourceType?: ResourceConstant): number {
+		let used = 0;
+
+		const store: StoreDefinition|undefined =  thing.carry || thing.store;
+		if (store) {
+			Object.keys(store).forEach((resourceType: string) => {
+				used += store[resourceType as ResourceConstant] || 0;
+			});
+		} else {
+			const isMineralResource = resourceType != RESOURCE_ENERGY; //power is also considered a mineral in this context
+			if (thing.mineralAmount && isMineralResource) used += thing.mineralAmount;
+			if (thing.energy && resourceType == RESOURCE_ENERGY) used += thing.energy;
+			if (thing.power && resourceType == RESOURCE_POWER) used += thing.power;
+			if (thing.ghodium && resourceType == RESOURCE_GHODIUM) used += thing.ghodium;
+		}
+
+		return used;
+	}
+
+	/**
+	 * Check how much free space thing has for resourceType.
+	 * If resourceType is omitted, 'space' in question is space that could be filled with any resourceType.
+	 */
+	static freeSpaceIn(thing: any, resourceType?: ResourceConstant): number {
+		let capacity = 0;
+		if (thing.carryCapacity) capacity = thing.carryCapacity;
+		else if (thing.storeCapacity) capacity = thing.storeCapacity;
+		else if (resourceType) {
+			const isMineralResource = resourceType != RESOURCE_ENERGY && resourceType != RESOURCE_POWER;
+			if (thing.mineralCapacity && isMineralResource) capacity = thing.mineralCapacity;
+			if (thing.energyCapacity && resourceType == RESOURCE_ENERGY) capacity = thing.energyCapacity;
+			if (thing.powerCapacity && resourceType == RESOURCE_POWER) capacity = thing.powerCapacity;
+			if (thing.ghodiumCapacity && resourceType == RESOURCE_GHODIUM) capacity = thing.ghodiumCapacity;
+		}
+
+		return Math.max(0, capacity - Util.usedSpaceIn(thing, resourceType));
+	}
+
+	/**
+	 * Check if thing has no space available for resourceType.
+	 * If resourceType is omitted, 'space' in question is space that could be filled with any resourceType.
+	 */
+	static isFull(thing: any, resourceType?: ResourceConstant) {
+		return Util.freeSpaceIn(thing, resourceType) <= 0;
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

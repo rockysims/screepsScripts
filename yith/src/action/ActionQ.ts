@@ -1,13 +1,15 @@
 import AbstractAction from 'action/AbstractAction';
+import Mem from "util/Mem";
 
 export default class ActionQ {
 	static push(creep: Creep, action: AbstractAction) {
-		creep.memory['actions'] = creep.memory['actions'] || [];
-		creep.memory['actions'].push(action);
-		// console.log(creep.memory.role + ' ' + creep.name + ' push() action: ', JSON.stringify(action));
+		const creepMem = Mem.of(creep);
+		creepMem['actions'] = creepMem['actions'] || [];
+		creepMem['actions'].push(action);
+		// console.log(creepMem.role + ' ' + creep.name + ' push() action: ', JSON.stringify(action));
 	}
 
 	static clear(creep: Creep) {
-		delete creep.memory['actions'];
+		delete Mem.of(creep)['actions'];
 	}
 }

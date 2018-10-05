@@ -2,7 +2,7 @@ export default class Mem {
 	static onTick() {
 		Object.keys(Memory.creeps || {}).forEach((name) => {
 			if (!Game.creeps[name]) {
-				console.log('Clearing non-existing creep memory: ' + name + ' (' + Memory.creeps[name].role + ')');
+				console.log('Clearing non-existing creep memory: ' + name);
 				delete Memory.creeps[name];
 			}
 		});
@@ -33,6 +33,10 @@ export default class Mem {
 		let pos: RoomPosition = (typeof position == 'object')?(<any>position)['pos']:position;
 		let room: Room = Game.rooms[pos.roomName];
 		let key: string = pos.x + ',' + pos.y;
-		return room.memory[key];
+		return Mem.of(room)[key];
+	}
+
+	static of(thing: {memory: {}}): any {
+		return thing.memory as any;
 	}
 }

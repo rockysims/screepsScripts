@@ -12,13 +12,13 @@ export default class TowerLogic {
 				.length;
 
 			if (constructingTowerCount <= 0) {
-				let builtTowers: Tower[] = All.towersIn(room);
+				let builtTowers: StructureTower[] = All.towersIn(room);
 				let maxTowers: number = Util.maxStructureCountIn(STRUCTURE_TOWER, room);
 				if (builtTowers.length < maxTowers) {
 					let pos: RoomPosition|undefined;
 
 					//pos = closest tile to spawn where is plains and all 4 sides are plains|swamp
-					let spawn: Spawn = All.spawnsIn(room)[0];
+					let spawn: StructureSpawn = All.spawnsIn(room)[0];
 					if (spawn) {
 						let origin: RoomPosition = spawn.pos;
 						let n = 9; //skip first 8
@@ -50,8 +50,8 @@ export default class TowerLogic {
 		});
 	}
 
-	static run(tower: Tower) {
-		let closestHostile: Creep = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+	static run(tower: StructureTower) {
+		let closestHostile: Creep|null = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
 		if (closestHostile) {
 			tower.attack(closestHostile);
 			Memory['attackCount'] = (Memory['attackCount'] || 0) + 1;

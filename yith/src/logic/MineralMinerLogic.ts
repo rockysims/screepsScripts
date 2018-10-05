@@ -3,6 +3,7 @@ import Util from "util/Util";
 import Action from "action/Action";
 import All from 'All';
 import SpawnRequest from 'SpawnRequest';
+import Mem from "util/Mem";
 
 export default class MineralMinerLogic {
 	static onTick() {
@@ -11,6 +12,8 @@ export default class MineralMinerLogic {
 
 			const mineral = All.mineralsIn(room)[0];
 			if (mineral) {
+				const roomMem = Mem.of(room);
+
 				const extractor = All.extractorsIn(room)[0];
 				if (!extractor) {
 					const extractorSite = All.constructionSitesIn(room, STRUCTURE_EXTRACTOR)[0];
@@ -19,40 +22,40 @@ export default class MineralMinerLogic {
 					}
 				}
 
-				const container = Game.getObjectById(room.memory['mineralContainerId']);
+				const container = Game.getObjectById(roomMem['mineralContainerId']);
 				if (!container) {
-					const containerSitePoint: {x: number, y: number}|undefined = room.memory['mineralContainerSitePoint'];
+					const containerSitePoint: {x: number, y: number}|undefined = roomMem['mineralContainerSitePoint'];
 					if (containerSitePoint) {
-						delete room.memory['mineralContainerSitePoint'];
+						delete roomMem['mineralContainerSitePoint'];
 
 						const containerSitePos = room.getPositionAt(containerSitePoint.x, containerSitePoint.y);
 						if (containerSitePos) {
-							const containerSite: ConstructionSite|undefined = room.lookForAt<ConstructionSite>(LOOK_CONSTRUCTION_SITES, containerSitePos)[0];
+							const containerSite: ConstructionSite|undefined = room.lookForAt(LOOK_CONSTRUCTION_SITES, containerSitePos)[0];
 							if (containerSite) {
-								room.memory['mineralContainerSiteId'] = containerSite.id;
+								roomMem['mineralContainerSiteId'] = containerSite.id;
 							}
 						}
 					}
 
-					const containerSite = Game.getObjectById(room.memory['mineralContainerSiteId']);
+					const containerSite = Game.getObjectById(roomMem['mineralContainerSiteId']);
 					if (!containerSite) {
-						if (!room.memory['mineralContainerSiteId']) {
+						if (!roomMem['mineralContainerSiteId']) {
 							const pos = placeContainerSite(room, mineral);
 							if (pos) {
 								//save pos so we can grab container site's id during next tick
 								//note: storing pos in memory causes bug where pos != thingInPos.pos in future ticks so store x and y instead
-								room.memory['mineralContainerSitePoint'] = {x: pos.x, y: pos.y};
+								roomMem['mineralContainerSitePoint'] = {x: pos.x, y: pos.y};
 							} else {
 								Log.error('MineralMinerLogic::onTick() failed to place mineral container.');
 							}
 						} else { //just finished building container?
-							delete room.memory['mineralContainerSiteId'];
+							delete roomMem['mineralContainerSiteId'];
 
-							const newContainer = <Container>mineral.pos.findInRange(FIND_STRUCTURES, 1, { //not FIND_MY_STRUCTURES
+							const newContainer = <StructureContainer>mineral.pos.findInRange(FIND_STRUCTURES, 1, { //not FIND_MY_STRUCTURES
 								filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
 							})[0];
 							if (newContainer) {
-								room.memory['mineralContainerId'] = newContainer.id;
+								roomMem['mineralContainerId'] = newContainer.id;
 							} else {
 								Log.error('MineralMinerLogic::onTick() could not find newContainer.');
 							}
@@ -87,18 +90,19 @@ export default class MineralMinerLogic {
 		if (Action.continue(creep)) return;
 
 		const room = creep.room;
-		const mem = creep.memory;
+		const roomMem = Mem.of(room);
+		const creepMem = Mem.of(creep);
 
-		//try to set mem['mineralId']
-		if (!mem['mineralId']) {
+		//try to set creepMem['mineralId']
+		if (!creepMem['mineralId']) {
 			const minerals = All.mineralsIn(room);
 			if (minerals.length > 0) {
-				mem['mineralId'] = minerals[0].id;
+				creepMem['mineralId'] = minerals[0].id;
 			}
 		}
 
-		const mineral: Mineral|null = Game.getObjectById(mem['mineralId']) || null;
-		const container: Container|null = Game.getObjectById(room.memory['mineralContainerId']) || null;
+		const mineral: Mineral|null = Game.getObjectById(creepMem['mineralId']) || null;
+		const container: StructureContainer|null = Game.getObjectById(roomMem['mineralContainerId']) || null;
 
 		//extract || moveTo container
 		if (mineral && container) {
@@ -123,8 +127,8 @@ export default class MineralMinerLogic {
 			const priority = 5;
 			return {
 				priority: priority,
-				generateBody: (energyAvailable: number): string[] => {
-					const body: string[] = [];
+				generateBody: (energyAvailable: number): BodyPartConstant[] => {
+					const body: BodyPartConstant[] = [];
 					const moveCost = Util.costOf([MOVE]);
 					const workCost = Util.costOf([WORK]);
 					while (energyAvailable >= moveCost || energyAvailable >= workCost) {

@@ -4,6 +4,7 @@ import Action from 'action/Action';
 import All from 'All';
 import SpawnRequest from 'SpawnRequest';
 import Store from 'util/Store';
+import Mem from "util/Mem";
 
 export default class MinerLogic {
 	static onTick() {}
@@ -11,7 +12,7 @@ export default class MinerLogic {
 	static run(creep: Creep) {
 		if (Action.continue(creep)) return;
 
-		const mem = creep.memory;
+		const mem = Mem.of(creep);
 
 		//try to set mem['sourceId'] && source
 		if (!mem['sourceId']) {
@@ -21,7 +22,7 @@ export default class MinerLogic {
 			const sources: Source[] = creep.room.find(FIND_SOURCES);
 			const unclaimedSources: Source[] = [];
 			sources.forEach((source) => {
-				const sourceClaimed = minersInRoom.some(miner => miner.memory['sourceId'] == source.id);
+				const sourceClaimed = minersInRoom.some(miner => Mem.of(miner)['sourceId'] == source.id);
 				if (!sourceClaimed) unclaimedSources.push(source);
 			});
 
@@ -42,7 +43,7 @@ export default class MinerLogic {
 				//try to find target and set mem['targetId'] || place targetSite
 				const targets = source.pos.findInRange(FIND_STRUCTURES, 1, { //not FIND_MY_STRUCTURES and not range 0
 					filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
-				}) as Container[];
+				}) as StructureContainer[];
 				console.log('targets: ', targets);
 
 				//fix for bug where onContainerBuilt places 2 containers (seems to be bug in screeps?)
@@ -135,8 +136,8 @@ export default class MinerLogic {
 				: (minerCount <= 0)?5:0;  //start up phase
 			return {
 				priority: priority,
-				generateBody: (energyAvailable: number): string[] => {
-					const body: string[] = [MOVE];
+				generateBody: (energyAvailable: number): BodyPartConstant[] => {
+					const body: BodyPartConstant[] = [MOVE];
 					energyAvailable -= Util.costOf([MOVE]);
 
 					const workCost = Util.costOf([WORK]);

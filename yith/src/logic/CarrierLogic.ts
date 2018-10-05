@@ -14,23 +14,23 @@ export default class CarrierLogic {
 		if (Action.continue(creep)) return;
 
 		let creepEnergy = creep.carry.energy || 0;
-		let mem = creep.memory;
-		let origMemCarrying = mem.carrying;
+		let mem = Mem.of(creep);
+		let origMemCarrying = mem['carrying'];
 
-		if (mem.carrying) {
+		if (mem['carrying']) {
 			Action.emptyEnergy(creep);
 			if (creepEnergy <= 0) {
-				mem.carrying = false;
+				mem['carrying'] = false;
 			}
 		} else {
 			Action.fillEnergy(creep);
 			if (creepEnergy >= creep.carryCapacity) {
-				mem.carrying = true;
+				mem['carrying'] = true;
 			}
 		}
 
-		if (mem.carrying != origMemCarrying) {
-			if (mem.carrying) creep.say('deliver');
+		if (mem['carrying'] != origMemCarrying) {
+			if (mem['carrying']) creep.say('deliver');
 			else creep.say('collect');
 		}
 
@@ -48,7 +48,7 @@ export default class CarrierLogic {
 
 
 		//TODO: fix issue where container site has isInputContainer flag but built container doesn't (untested but almost certain an issue)
-		All.containersIn(room).forEach((container: Container) => {
+		All.containersIn(room).forEach((container: StructureContainer) => {
 			let isInputContainer: boolean = Mem.byId(container)['isInputContainer'];
 			console.log('isInputContainer: ', isInputContainer);
 		});
@@ -57,7 +57,7 @@ export default class CarrierLogic {
 
 		let spawnRequest: SpawnRequest = {
 			priority: priority,
-			generateBody: (energyAvailable: number): string[] => {
+			generateBody: (energyAvailable: number): BodyPartConstant[] => {
 				return Util.generateBodyFromSet([CARRY, MOVE], energyAvailable);
 			},
 			memory: {role: 'carrier'}

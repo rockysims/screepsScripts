@@ -1,6 +1,6 @@
 interface SpawnRequest {
 	priority: number,
-	generateBody(energyAvailable: number): string[],
+	generateBody(energyAvailable: number): BodyPartConstant[],
 	memory: {role: string}
 }
 

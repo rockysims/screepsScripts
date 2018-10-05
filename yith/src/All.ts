@@ -1,12 +1,14 @@
+import Mem from "util/Mem";
+
 interface AllCache {
 	time: number
 	rooms?: Room[]
-	spawns?: Spawn[]
+	spawns?: StructureSpawn[]
 	creeps?: Creep[]
-	towers?: Tower[]
+	towers?: StructureTower[]
 	structures?: Structure[]
-	extensions?: Extension[]
-	containers?: Container[]
+	extensions?: StructureExtension[]
+	containers?: StructureContainer[]
 	extractors?: StructureExtractor[]
 	constructionSites?: ConstructionSite[]
 	droppedEnergyByRoom: {[roomName: string]: Resource[]}
@@ -39,7 +41,7 @@ export default class All {
 		return All.cache.rooms;
 	}
 
-	static spawns(): Spawn[] {
+	static spawns(): StructureSpawn[] {
 		All.ensureFreshCache();
 
 		if (!All.cache.spawns) {
@@ -61,11 +63,11 @@ export default class All {
 		return All.cache.creeps;
 	}
 
-	static towers(): Tower[] {
+	static towers(): StructureTower[] {
 		All.ensureFreshCache();
 
 		if (!All.cache.towers) {
-			All.cache.towers = <Tower[]>All
+			All.cache.towers = <StructureTower[]>All
 				.structures()
 				.filter((structure: Structure) => structure.structureType == STRUCTURE_TOWER);
 		}
@@ -80,7 +82,7 @@ export default class All {
 			All.cache.structures = Object.keys(Game.structures)
 				.map(key => Game.structures[key]);
 			All.rooms().forEach(room => {
-				const containers = (room.find<Container>(FIND_STRUCTURES, {
+				const containers = (room.find<StructureContainer>(FIND_STRUCTURES, {
 					filter: (structure: Structure) => structure.structureType == STRUCTURE_CONTAINER
 				}) || []);
 				All.cache.structures = All.cache.structures || [];
@@ -91,11 +93,11 @@ export default class All {
 		return All.cache.structures;
 	}
 
-	static extensions(): Extension[] {
+	static extensions(): StructureExtension[] {
 		All.ensureFreshCache();
 
 		if (!All.cache.extensions) {
-			All.cache.extensions = <Extension[]>All
+			All.cache.extensions = <StructureExtension[]>All
 				.structures()
 				.filter((structure: Structure) => structure.structureType == STRUCTURE_EXTENSION);
 		}
@@ -103,11 +105,11 @@ export default class All {
 		return All.cache.extensions;
 	}
 
-	static containers(): Container[] {
+	static containers(): StructureContainer[] {
 		All.ensureFreshCache();
 
 		if (!All.cache.containers) {
-			All.cache.containers = <Container[]>All
+			All.cache.containers = <StructureContainer[]>All
 				.structures()
 				.filter((structure: Structure) => structure.structureType == STRUCTURE_CONTAINER);
 		}
@@ -142,10 +144,10 @@ export default class All {
 
 	//TODO: add caching to methods with suffix 'In'?
 
-	static spawnsIn(room: Room): Spawn[] {
+	static spawnsIn(room: Room): StructureSpawn[] {
 		return All
 			.spawns()
-			.filter((spawn: Spawn) => spawn.room.name == room.name);
+			.filter((spawn: StructureSpawn) => spawn.room.name == room.name);
 	}
 
 	static creepsIn(room: Room): Creep[] {
@@ -154,22 +156,22 @@ export default class All {
 			.filter((creep: Creep) => creep.room.name == room.name);
 	}
 
-	static towersIn(room: Room): Tower[] {
+	static towersIn(room: Room): StructureTower[] {
 		return All
 			.towers()
-			.filter((tower: Tower) => tower.room.name == room.name);
+			.filter((tower: StructureTower) => tower.room.name == room.name);
 	}
 
-	static extensionsIn(room: Room): Extension[] {
+	static extensionsIn(room: Room): StructureExtension[] {
 		return All
 			.extensions()
-			.filter((extension: Extension) => extension.room.name == room.name);
+			.filter((extension: StructureExtension) => extension.room.name == room.name);
 	}
 
-	static containersIn(room: Room): Container[] {
+	static containersIn(room: Room): StructureContainer[] {
 		return All
 			.containers()
-			.filter((container: Container) => container.room.name == room.name);
+			.filter((container: StructureContainer) => container.room.name == room.name);
 	}
 
 	static extractorsIn(room: Room): StructureExtractor[] {
@@ -181,7 +183,7 @@ export default class All {
 	static creepsByRoleIn(role: string, room: Room): Creep[] {
 		return All
 			.creepsIn(room)
-			.filter((crp) => crp.memory.role == role);
+			.filter((creep) => Mem.of(creep)['role'] == role);
 	}
 
 	static constructionSitesIn(room: Room, typeFilter?: String): ConstructionSite[] {

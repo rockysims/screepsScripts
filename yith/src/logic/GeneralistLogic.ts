@@ -2,6 +2,7 @@ import Util from 'util/Util';
 import Action from 'action/Action';
 import SpawnRequest from 'SpawnRequest';
 import All from 'All';
+import Mem from "util/Mem";
 
 export default class GeneralistLogic {
 	static onTick() {}
@@ -11,7 +12,7 @@ export default class GeneralistLogic {
 		if (Action.continue(creep)) return;
 
 		let creepEnergy = creep.carry.energy || 0;
-		let mem = creep.memory;
+		let mem = Mem.of(creep);
 		let origMemHarvesting = mem.harvesting;
 
 		if (creepEnergy == 0) mem.harvesting = true;
@@ -22,8 +23,8 @@ export default class GeneralistLogic {
 		if (mem.harvesting) {
 			Action.fillEnergy(creep);
 		} else {
-			let target: Structure = creep.pos.findClosestByPath(
-				All.towersIn(creep.room).filter((tower: Tower) => tower.energy < 100)
+			let target: Structure|null = creep.pos.findClosestByPath(
+				All.towersIn(creep.room).filter((tower: StructureTower) => tower.energy < 100)
 			);
 
 			if (!target) {
@@ -33,22 +34,22 @@ export default class GeneralistLogic {
 						return (structure.structureType == STRUCTURE_EXTENSION
 								|| structure.structureType == STRUCTURE_SPAWN
 							) &&
-							(<Extension|Spawn>structure).energy < (<Extension|Spawn>structure).energyCapacity;
+							(<StructureExtension|StructureSpawn>structure).energy < (<StructureExtension|StructureSpawn>structure).energyCapacity;
 					});
-				target = creep.pos.findClosestByPath(spawnAndExtensionTargets) as Extension|Spawn;
+				target = creep.pos.findClosestByPath(spawnAndExtensionTargets) as StructureExtension|StructureSpawn;
 			}
 
 			//console.log('duration generalist::run() b: ', new Date().getTime() - start);
 
 			target = target || creep.pos.findClosestByPath(
-					All.towersIn(creep.room).filter((tower: Tower) => tower.energy + 50 < tower.energyCapacity)
+					All.towersIn(creep.room).filter((tower: StructureTower) => tower.energy + 50 < tower.energyCapacity)
 			);
 
-			let roomCtrl: Controller|undefined = creep.room.controller;
+			let roomCtrl: StructureController|undefined = creep.room.controller;
 
 			const terminal = creep.room.terminal;
 			if (terminal) {
-				const terminalSpace = Util.terminalSpace(terminal);
+				const terminalSpace = Util.freeSpaceIn(terminal);
 				const terminalEnergy = terminal.store[RESOURCE_ENERGY];
 				const terminalWantsEnergy = terminalEnergy < 100000 || (roomCtrl && roomCtrl.level >= 8);
 				if (terminalWantsEnergy && (creep.carry.energy || 0) <= terminalSpace) {
@@ -56,7 +57,7 @@ export default class GeneralistLogic {
 				}
 			}
 
-			let constructionSite: ConstructionSite|undefined = creep.pos.findClosestByPath(All.constructionSitesIn(creep.room));
+			let constructionSite: ConstructionSite|null = creep.pos.findClosestByPath(All.constructionSitesIn(creep.room));
 
 			if (roomCtrl && roomCtrl.ticksToDowngrade < CONTROLLER_DOWNGRADE[roomCtrl.level] - 4000) Action.upgrade(creep, roomCtrl);
 			else if (target) Action.deliver(creep, target);
@@ -97,7 +98,7 @@ export default class GeneralistLogic {
 		if (requestSpawn) {
 			return {
 				priority: Math.max(1, 8 - generalistCount),
-				generateBody: (energyAvailable: number): string[] => {
+				generateBody: (energyAvailable: number): BodyPartConstant[] => {
 					if (countByRole['generalist'] > 0) {
 						return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], energyAvailable);
 					} else {

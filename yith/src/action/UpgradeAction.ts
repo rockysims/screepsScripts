@@ -7,7 +7,7 @@ export default class UpgradeAction extends AbstractAction {
 	controllerId: string;
 	child: MoveToRangeAction|undefined;
 
-	constructor(controller: Controller) {
+	constructor(controller: StructureController) {
 		super(UpgradeAction.type);
 		this.controllerId = controller.id;
 	}
@@ -19,7 +19,7 @@ export default class UpgradeAction extends AbstractAction {
 			else action.child = undefined;
 		}
 
-		const controller: Controller|undefined = Game.getObjectById(action.controllerId) || undefined;
+		const controller: StructureController|undefined = Game.getObjectById(action.controllerId) || undefined;
 		const creepEnergy = creep.carry.energy || 0;
 		if (controller
 			&& (controller.level < 8 || controller.ticksToDowngrade < CONTROLLER_DOWNGRADE[controller.level] - 10)

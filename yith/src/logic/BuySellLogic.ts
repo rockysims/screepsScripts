@@ -3,6 +3,7 @@ import Log from 'util/Log';
 import All from "All";
 import Timer from "util/Timer";
 import Util from "util/Util";
+import Mem from "util/Mem";
 
 interface DecoratedEnergyOrder {
 	id: string,
@@ -20,7 +21,7 @@ interface DecoratedResourceOrder {
 }
 
 interface EnergyPlan {
-	resourceType: string,
+	resourceType: ResourceConstant,
 	orders: EnergyPlanOrder[],
 	netAmount: number,
 	netPrice: number,
@@ -36,7 +37,7 @@ interface EnergyPlanOrder {
 }
 
 interface ResourcePlan {
-	resourceType: string,
+	resourceType: ResourceConstant,
 	orders: ResourcePlanOrder[],
 	amount: number,
 	priceWithoutEnergy: number,
@@ -87,7 +88,7 @@ export default class BuySellLogic {
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 
-		const terminal: Terminal|null = Game.getObjectById(Memory['mainTerminalId']);
+		const terminal: StructureTerminal|null = Game.getObjectById(Memory['mainTerminalId']);
 		if (terminal) {
 			const tickedPlans = tickPlans(terminal);
 			if (!tickedPlans) {
@@ -114,20 +115,22 @@ export default class BuySellLogic {
 
 		///////////////////////////////////
 
-		function queuePlans(plans: (EnergyPlan|ResourcePlan)[], terminal: Terminal) {
-			if (!terminal.room.memory['curPlans']) {
-				terminal.room.memory['curPlans'] = plans;
+		function queuePlans(plans: (EnergyPlan|ResourcePlan)[], terminal: StructureTerminal) {
+			const terminalRoomMem = Mem.of(terminal.room);
+			if (!terminalRoomMem['curPlans']) {
+				terminalRoomMem['curPlans'] = plans;
 			} else {
 				Log.error("Failed to queue new plans because curPlans still pending.");
-				Log.log("curPlans: " + JSON.stringify(terminal.room.memory['curPlans']));
+				Log.log("curPlans: " + JSON.stringify(terminalRoomMem['curPlans']));
 				Log.log("new plans: " + JSON.stringify(plans));
 			}
 		}
 
-		function tickPlans(terminal: Terminal): boolean {
+		function tickPlans(terminal: StructureTerminal): boolean {
+			const terminalRoomMem = Mem.of(terminal.room);
 			let ticked = false;
 
-			const curPlans = terminal.room.memory['curPlans'] as (EnergyPlan|ResourcePlan)[]|undefined;
+			const curPlans = terminalRoomMem['curPlans'] as (EnergyPlan|ResourcePlan)[]|undefined;
 			if (curPlans) {
 				for (let curPlan of curPlans) {
 					if (!curPlan.done) {
@@ -143,7 +146,7 @@ export default class BuySellLogic {
 			}
 
 			if (!ticked) {
-				delete terminal.room.memory['curPlans'];
+				delete terminalRoomMem['curPlans'];
 
 				if (curPlans) {
 					let ordersTotal = 0;
@@ -165,7 +168,7 @@ export default class BuySellLogic {
 			return ticked;
 		}
 
-		function tickPlan(plan: EnergyPlan|ResourcePlan, terminal: Terminal): boolean {
+		function tickPlan(plan: EnergyPlan|ResourcePlan, terminal: StructureTerminal): boolean {
 			for (let order of plan.orders) {
 				if (!order.done) {
 					const result = executeOrder(order, plan, terminal);
@@ -196,7 +199,7 @@ export default class BuySellLogic {
 			return false; //plan didn't need to tick (no orders needed to tick)
 		}
 
-		function executeOrder(order: EnergyPlanOrder|ResourcePlanOrder, plan: EnergyPlan|ResourcePlan, terminal: Terminal): number {
+		function executeOrder(order: EnergyPlanOrder|ResourcePlanOrder, plan: EnergyPlan|ResourcePlan, terminal: StructureTerminal): number {
 			const isEnergyPlan = plan.resourceType == RESOURCE_ENERGY;
 			const planAmount = (isEnergyPlan)
 				? (plan as EnergyPlan).netAmount
@@ -218,8 +221,8 @@ export default class BuySellLogic {
 					+ " = $" + format(displayAmount * displayUnitPrice);
 
 				const enoughOnHand = (isEnergyPlan)
-					? terminal.store[plan.resourceType] >= planAmount + lackEnergyThreshold
-					: terminal.store[plan.resourceType] >= planAmount;
+					? terminal.store[plan.resourceType] || 0 >= planAmount + lackEnergyThreshold
+					: terminal.store[plan.resourceType] || 0 >= planAmount;
 				if (isInOrder && enoughOnHand) {
 					Log.log("SKIP " + dealStr);
 					return 302;
@@ -253,12 +256,13 @@ export default class BuySellLogic {
 			}
 		}
 
-		function considerQueuingPlans(terminal: Terminal) {
+		function considerQueuingPlans(terminal: StructureTerminal) {
 			const terminalRoom = terminal.room;
-			const terminalSpace = Util.terminalSpace(terminal);
+			const terminalRoomMem = Mem.of(terminalRoom);
+			const terminalSpace = Util.freeSpaceIn(terminal);
 
-			terminalRoom.memory['resourceIndex'] = terminalRoom.memory['resourceIndex'] || 0;
-			const resourceType = RESOURCES_ALL[terminalRoom.memory['resourceIndex']];
+			terminalRoomMem['resourceIndex'] = terminalRoomMem['resourceIndex'] || 0;
+			const resourceType = RESOURCES_ALL[terminalRoomMem['resourceIndex']];
 			let profit = 0;
 			if (resourceType === RESOURCE_ENERGY) {
 				const ambitiousEnergyOutPlan = makeEnergyOutPlan(terminalSpace, 1);
@@ -308,7 +312,7 @@ export default class BuySellLogic {
 				}
 			}
 			if (profit <= 0) {
-				terminalRoom.memory['resourceIndex'] = (terminalRoom.memory['resourceIndex'] + 1) % RESOURCES_ALL.length;
+				terminalRoomMem['resourceIndex'] = (terminalRoomMem['resourceIndex'] + 1) % RESOURCES_ALL.length;
 
 				const extraEnergy = terminal.store[RESOURCE_ENERGY] - extraEnergyThreshold;
 				if (extraEnergy > 0) {
@@ -324,7 +328,7 @@ export default class BuySellLogic {
 
 			///////////////////////////////////
 
-			function planToFlipResource(resourceType: string, creditsPerEnergyEstimate: number): ResourceFlipPlans {
+			function planToFlipResource(resourceType: ResourceConstant, creditsPerEnergyEstimate: number): ResourceFlipPlans {
 				const ambitiousResourceOutPlan = makeResourceOutPlan(resourceType, terminalSpace, 1, creditsPerEnergyEstimate);
 				const ambitiousResourceInPlan = makeResourceInPlan(resourceType, ambitiousResourceOutPlan.amount, 1, creditsPerEnergyEstimate);
 				const ambitiousEnergyCost = ambitiousResourceInPlan.energyCost + ambitiousResourceOutPlan.energyCost;
@@ -475,7 +479,7 @@ export default class BuySellLogic {
 				return plan;
 			}
 
-			function getResourceBuyOrdersSortedByAdjustedUnitPrice(resourceType: string, creditsPerEnergy: number): DecoratedResourceOrder[] {
+			function getResourceBuyOrdersSortedByAdjustedUnitPrice(resourceType: ResourceConstant, creditsPerEnergy: number): DecoratedResourceOrder[] {
 				//ensure cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType] exists
 				if (!cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType]) {
 					const resourceBuyOrdersRawAll = Game.market.getAllOrders({type: ORDER_BUY, resourceType: resourceType});
@@ -511,7 +515,7 @@ export default class BuySellLogic {
 				return cache.resourceBuyOrdersSortedByAdjustedUnitPrice[resourceType];
 			}
 
-			function getResourceSellOrdersSortedByAdjustedUnitPrice(resourceType: string, creditsPerEnergy: number): DecoratedResourceOrder[] {
+			function getResourceSellOrdersSortedByAdjustedUnitPrice(resourceType: ResourceConstant, creditsPerEnergy: number): DecoratedResourceOrder[] {
 				//ensure cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType] exists
 				if (!cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType]) {
 					const resourceSellOrdersRawAll = Game.market.getAllOrders({type: ORDER_SELL, resourceType: resourceType});
@@ -547,15 +551,15 @@ export default class BuySellLogic {
 				return cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType];
 			}
 
-			function makeResourceInPlan(resourceType: string, maxAmountToBuy: number, maxOrderCount: number, creditsPerEnergy: number): ResourcePlan {
+			function makeResourceInPlan(resourceType: ResourceConstant, maxAmountToBuy: number, maxOrderCount: number, creditsPerEnergy: number): ResourcePlan {
 				const sortedOrders = getResourceSellOrdersSortedByAdjustedUnitPrice(resourceType, creditsPerEnergy);
 				return makeResourcePlan(sortedOrders, resourceType, maxAmountToBuy, maxOrderCount);
 			}
-			function makeResourceOutPlan(resourceType: string, maxAmountToBuy: number, maxOrderCount: number, creditsPerEnergy: number): ResourcePlan {
+			function makeResourceOutPlan(resourceType: ResourceConstant, maxAmountToBuy: number, maxOrderCount: number, creditsPerEnergy: number): ResourcePlan {
 				const sortedOrders = getResourceBuyOrdersSortedByAdjustedUnitPrice(resourceType, creditsPerEnergy);
 				return makeResourcePlan(sortedOrders, resourceType, maxAmountToBuy, maxOrderCount);
 			}
-			function makeResourcePlan(sortedOrders: DecoratedResourceOrder[], resourceType: string, maxAmount: number, maxOrderCount: number): ResourcePlan {
+			function makeResourcePlan(sortedOrders: DecoratedResourceOrder[], resourceType: ResourceConstant, maxAmount: number, maxOrderCount: number): ResourcePlan {
 				const plan: ResourcePlan = {
 					resourceType: resourceType,
 					orders: [],

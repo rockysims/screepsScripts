@@ -1,4 +1,4 @@
-/// <reference path="../../typings/index.d.ts" />
+/// <reference path="../../node_modules/@types/screeps/index.d.ts" />
 
 import Log from 'util/Log';
 import SpawnRequest from 'SpawnRequest';
@@ -67,7 +67,7 @@ export const loop = function(): void {
 		//tick single room creeps
 		All.creepsIn(room).forEach((creep: Creep) => {
 			if (!creep.spawning) {
-				let role = creep.memory.role;
+				let role = Mem.of(creep)['role'];
 				if (role == 'generalist') GeneralistLogic.run(creep);
 				else if (role == 'builder') BuilderLogic.run(creep);
 				else if (role == 'miner') MinerLogic.run(creep);
@@ -99,16 +99,16 @@ export const loop = function(): void {
 		let spawn: StructureSpawn | undefined = All
 			.spawnsIn(room)
 			.filter((spawn: StructureSpawn) => !spawn.spawning)
-			.sort((a: Spawn, b: StructureSpawn) => a.energy - b.energy) //lowest to highest
+			.sort((a: StructureSpawn, b: StructureSpawn) => a.energy - b.energy) //lowest to highest
 			.pop();
 
 		//try to use spawn to execute spawnRequest
 		if (spawn && spawnRequest) {
 			Log.log("try to spawn " + spawnRequest.memory.role);
-			let body: string[] = spawnRequest.generateBody(room.energyCapacityAvailable);
+			let body: BodyPartConstant[] = spawnRequest.generateBody(room.energyCapacityAvailable);
 			let memory: {role: string} = spawnRequest.memory;
 			Memory['nextCreepId'] = Memory['nextCreepId'] || 0;
-			let result = spawn.createCreep(body,  memory.role + " #" + Memory['nextCreepId'], memory);
+			let result = spawn.spawnCreep(body,  memory.role + " #" + Memory['nextCreepId'], {memory: memory});
 			if (typeof(result) == 'string') {
 				Memory['nextCreepId']++;
 				let pos = new RoomPosition(spawn.pos.x + 1, spawn.pos.y, room.name);

@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/rockysims/screepsScripts#readme",
   "devDependencies": {
+    "@types/screeps": "^2.4.1",
     "del": "^3.0.0",
     "gulp": "^3.9.1",
     "gulp-rename": "^1.2.2",

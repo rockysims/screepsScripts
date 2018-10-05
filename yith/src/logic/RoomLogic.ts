@@ -16,13 +16,13 @@ export default class RoomLogic {
 			.filter((constructionSite: ConstructionSite) => constructionSite.structureType == STRUCTURE_EXTENSION);
 
 		if (constructingExtensions.length <= 0) {
-			const builtExtensions: Extension[] = All.extensionsIn(room);
+			const builtExtensions: StructureExtension[] = All.extensionsIn(room);
 			let maxExtensions: number = Util.maxStructureCountIn(STRUCTURE_EXTENSION, room);
 			if (builtExtensions.length < maxExtensions) {
 				let pos: RoomPosition|undefined;
 
 				//pos = closest tile to spawn where is plains and all 4 sides are plains|swamp
-				let spawn: Spawn = All.spawnsIn(room)[0];
+				let spawn: StructureSpawn = All.spawnsIn(room)[0];
 				if (spawn) {
 					let origin: RoomPosition = spawn.pos;
 					let n = 9; //skip first 8

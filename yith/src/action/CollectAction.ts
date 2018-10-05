@@ -7,7 +7,7 @@ export default class CollectAction extends AbstractAction {
 	containerId: string;
 	child: MoveToRangeAction|undefined;
 
-	constructor(container: Container) {
+	constructor(container: StructureContainer) {
 		super(CollectAction.type);
 		this.containerId = container.id;
 	}
@@ -19,7 +19,7 @@ export default class CollectAction extends AbstractAction {
 			else action.child = undefined;
 		}
 
-		const container: Container|undefined = Game.getObjectById(action.containerId) || undefined;
+		const container: StructureContainer|undefined = Game.getObjectById(action.containerId) || undefined;
 		const creepEnergy = creep.carry.energy || 0;
 		if (container
 			&& Util.getEnergy(container) > 0

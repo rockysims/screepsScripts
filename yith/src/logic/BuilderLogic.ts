@@ -3,6 +3,7 @@ import Action from 'action/Action';
 import GeneralistLogic from 'logic/GeneralistLogic';
 import SpawnRequest from 'SpawnRequest';
 import All from 'All';
+import Mem from "util/Mem";
 
 interface BuilderCreepMemory {
 	building: boolean;
@@ -16,32 +17,32 @@ export default class BuilderLogic {
 	static run(creep: Creep) {
 		if (Action.continue(creep)) return;
 
-		const constructionSite: ConstructionSite = creep.pos.findClosestByPath(All.constructionSitesIn(creep.room));
+		const constructionSite: ConstructionSite|null = creep.pos.findClosestByPath(All.constructionSitesIn(creep.room));
 		if (!constructionSite) {
 			GeneralistLogic.run(creep);
 			return;
 		}
 
 		const creepEnergy = creep.carry.energy || 0;
-		const mem: BuilderCreepMemory = creep.memory;
+		const mem: BuilderCreepMemory = Mem.of(creep);
 		const origMemBuilding = mem.building;
 
-		if (mem.building) {
+		if (mem['building']) {
 			if (constructionSite) Action.build(creep, constructionSite);
 			else Action.idle(creep);
 
 			if (creepEnergy <= 0) {
-				mem.building = false;
+				mem['building'] = false;
 			}
 		} else {
 			Action.fillEnergy(creep);
 			if (creepEnergy >= creep.carryCapacity) {
-				mem.building = true;
+				mem['building'] = true;
 			}
 		}
 
-		if (mem.building != origMemBuilding) {
-			if (mem.building) creep.say('build');
+		if (mem['building'] != origMemBuilding) {
+			if (mem['building']) creep.say('build');
 			else creep.say('collect');
 		}
 
@@ -62,7 +63,7 @@ export default class BuilderLogic {
 			}
 			return {
 				priority: priority,
-				generateBody: (availableEnergy: number): string[] => {
+				generateBody: (availableEnergy: number): BodyPartConstant[] => {
 					return Util.generateBodyFromSet([WORK, CARRY, MOVE, MOVE], availableEnergy);
 				},
 				memory: {role: 'builder'}

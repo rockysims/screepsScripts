@@ -11,18 +11,20 @@ import ActionQ from 'action/ActionQ';
 import Util from 'util/Util';
 import Log from 'util/Log';
 import All from 'All';
+import Mem from "util/Mem";
 
 export default class Action {
 	static continue(creep: Creep): boolean|number {
-		if (creep.memory['inActionContinue']) {
-			console.log('!inActionContinue <---------------------------------------------=');
+		const creepMem = Mem.of(creep);
+		if (creepMem['inActionContinue']) {
+			Log.log('!inActionContinue <---------------------------------------------=');
 			return true;
 		}
-		creep.memory['inActionContinue'] = true;
+		creepMem['inActionContinue'] = true;
 
 		try {
-			creep.memory['actions'] = creep.memory['actions'] || [];
-			const actions: AbstractAction[] = creep.memory['actions'];
+			creepMem['actions'] = creepMem['actions'] || [];
+			const actions: AbstractAction[] = creepMem['actions'];
 
 			//console.log(creep.name + ' continue() actions: ', JSON.stringify(actions));
 			let loopLimit = 10;
@@ -58,7 +60,7 @@ export default class Action {
 						//probably damaged so for now just suicide (later maybe wait for healer creep?)
 						//TODO: go back to spawn first then suicide
 						creep.suicide();
-						Log.warn(creep.memory.role + ' ' + creep.name + ' suicide() from Action::continue() due to ERR_NO_BODYPART (-12)');
+						Log.warn(creepMem['role'] + ' ' + creep.name + ' suicide() from Action::continue() due to ERR_NO_BODYPART (-12)');
 					}
 				}
 			}
@@ -67,7 +69,7 @@ export default class Action {
 
 			return false;
 		} finally {
-			creep.memory['inActionContinue'] = false;
+			creepMem['inActionContinue'] = false;
 		}
 	}
 
@@ -103,7 +105,7 @@ export default class Action {
 		));
 	}
 
-	static collect(creep: Creep, container: Container) {
+	static collect(creep: Creep, container: StructureContainer) {
 		ActionQ.push(creep, new CollectAction(
 			container
 		));
@@ -121,7 +123,7 @@ export default class Action {
 		));
 	}
 
-	static upgrade(creep: Creep, controller: Controller) {
+	static upgrade(creep: Creep, controller: StructureController) {
 		ActionQ.push(creep, new UpgradeAction(
 			controller
 		));
@@ -160,7 +162,7 @@ export default class Action {
 			.droppedEnergyIn(creep.room)
 			.filter(resource => resource.amount >= creep.carryCapacity * 0.75);
 
-		const containers: Container[] = All
+		const containers: StructureContainer[] = All
 			.containersIn(creep.room)
 			.filter(container => container.store[RESOURCE_ENERGY] >= creep.carryCapacity / 2);
 
@@ -168,19 +170,19 @@ export default class Action {
 			.sourcesIn(creep.room)
 			.filter((source: Source) => source.energy > 0);
 
-		const targets: (Resource|Container|Source)[] = [];
+		const targets: (Resource|StructureContainer|Source)[] = [];
 		targets.push(... energyDrops);
 		targets.push(... containers);
 		if (targets.length == 0) targets.push(... sources);
 
 		//sort targets (lowest range last)
-		const sortedTargets = targets.sort((a: (Resource|Container|Source), b: (Resource|Container|Source)) => {
+		const sortedTargets = targets.sort((a: (Resource|StructureContainer|Source), b: (Resource|StructureContainer|Source)) => {
 			return b.pos.getRangeTo(creep.pos) - a.pos.getRangeTo(creep.pos)
 		});
 
 		//console.log('fillEnergy() duration B: ', new Date().getTime() - start);
 
-		let target: Resource|Container|Source|undefined;
+		let target: Resource|StructureContainer|Source|undefined;
 		while (sortedTargets.length > 0 && !target) {
 			const closestTarget = sortedTargets.pop();
 			//find path from target to creep (not vic-versa) so that surrounded targets fail fast
@@ -196,7 +198,7 @@ export default class Action {
 			if ((target as any)['resourceType']) {
 				Action.pickup(creep, target as Resource);
 			} else if ((target as any)['ticksToDecay']) {
-				Action.collect(creep, target as Container);
+				Action.collect(creep, target as StructureContainer);
 			} else if (!(target as any)['structureType']) {
 				Action.harvest(creep, target as Source);
 			} else {
@@ -217,12 +219,12 @@ export default class Action {
 	}
 
 	static emptyEnergy(creep: Creep) {
-		let target: Structure = creep.pos.findClosestByPath(FIND_STRUCTURES, {
+		let target: Structure|null = creep.pos.findClosestByPath(FIND_STRUCTURES, {
 			filter: (structure: Structure) => {
 				return (structure.structureType == STRUCTURE_EXTENSION
 						|| structure.structureType == STRUCTURE_SPAWN
 					) &&
-					(<Extension|Spawn>structure).energy < (<Extension|Spawn>structure).energyCapacity;
+					(<StructureExtension|StructureSpawn>structure).energy < (<StructureExtension|StructureSpawn>structure).energyCapacity;
 			}
 		});
 		target = target || creep.pos.findClosestByPath(FIND_STRUCTURES, {
@@ -230,10 +232,10 @@ export default class Action {
 					return (structure.structureType == STRUCTURE_CONTAINER
 							|| structure.structureType == STRUCTURE_TERMINAL
 							|| structure.structureType == STRUCTURE_STORAGE
-						) && !Util.isFull(structure);
+						) && !Util.isFull(structure, RESOURCE_ENERGY);
 				}
 			});
-		let roomCtrl: Controller|undefined = creep.room.controller;
+		let roomCtrl: StructureController|undefined = creep.room.controller;
 		if (roomCtrl && roomCtrl.level >= 8 && roomCtrl.ticksToDowngrade > 1000) {
 			roomCtrl = undefined;
 		}

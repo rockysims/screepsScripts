@@ -24,7 +24,7 @@ export default class DeliverAction extends AbstractAction {
 		//TODO: instead of !isFull do Util.getEnergy(structure) >= Util.getCapacity(structure) - 20
 		//	to prevent feeding tower 10 energy at a time until all delivered
 		//		happens when tower is firing each tick
-		if (structure && !Util.isFull(structure) && creepEnergy > 0) {
+		if (structure && !Util.isFull(structure, RESOURCE_ENERGY) && creepEnergy > 0) {
 			const result: number = creep.transfer(structure, RESOURCE_ENERGY);
 			if (result == OK) {
 				return true;

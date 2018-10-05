@@ -320,16 +320,21 @@ export default class BuySellLogic {
 							Log.warn("Failed to flip " + resourceType + " because not enough energy on market." + ((purchaseEnergy)?"":" !purchaseEnergy"));
 						}
 					} else {
-						Log.log("--- Not Flipping Report ---");
-						if (purchaseEnergy) {
-							Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+						const profitWithoutEnergyCosts = resourceOutPlan.priceWithoutEnergy - resourceInPlan.priceWithoutEnergy;
+						if (profitWithoutEnergyCosts > 0) {
+							Log.log("--- Not Flipping Report ---");
+							if (purchaseEnergy) {
+								Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+							} else {
+								Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+							}
+							Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+							Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
+							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
+							Log.log("--- --- ---");
 						} else {
-							Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
 						}
-						Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
-						Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
-						Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
-						Log.log("--- --- ---");
 					}
 				} else {
 					Log.warn("No energy for sale so not trying to flip " + resourceType + ".");

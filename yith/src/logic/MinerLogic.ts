@@ -141,7 +141,7 @@ export default class MinerLogic {
 			const fullMinerCost = Util.costOf([WORK, WORK, WORK, WORK, WORK, MOVE]);
 			const priority = (fullMinerCost <= room.energyCapacityAvailable)
 				? Math.max(4, 7 - minerCount * 0.5)
-				: (minerCount <= 0)?5:0;  //start up phase
+				: (minerCount <= 1)?5:0;  //start up phase
 			return {
 				priority: priority,
 				generateBody: (energyAvailable: number): BodyPartConstant[] => {

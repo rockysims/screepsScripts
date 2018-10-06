@@ -290,7 +290,7 @@ export default class BuySellLogic {
 				let queuedFlipPlans = false;
 
 				if (resourceType === RESOURCE_ENERGY) {
-					const ambitiousEnergyOutPlan = makeEnergyOutPlan(terminalSpace, 1);
+					const ambitiousEnergyOutPlan = makeEnergyOutPlan(terminalSpace + 1, 1);
 					const energyInPlan = makeEnergyInPlan(ambitiousEnergyOutPlan.netAmount, 1);
 					const energyOutPlan = makeEnergyOutPlan(energyInPlan.netAmount, 1);
 					const profit = energyOutPlan.netPrice - energyInPlan.netPrice;
@@ -389,8 +389,7 @@ export default class BuySellLogic {
 					} else {
 						const creditsPerEnergyEstimate = makeCreditsPerEnergyEstimate();
 						if (creditsPerEnergyEstimate) {
-							// const extraMineral = Util.amountIn(terminal, resourceType) - sellMineralThreshold;
-							const extraMineral = Math.min(10, Util.amountIn(terminal, resourceType) - sellMineralThreshold);
+							const extraMineral = Util.amountIn(terminal, resourceType) - sellMineralThreshold;
 							if (extraMineral > 0) {
 								const mineralOutPlan = makeResourceOutPlan(resourceType, extraMineral, 10, creditsPerEnergyEstimate);
 								queuePlans([mineralOutPlan], terminal);

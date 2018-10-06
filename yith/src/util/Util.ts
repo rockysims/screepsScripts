@@ -172,6 +172,17 @@ export default class Util {
 		return energy;
 	}
 
+	static amountIn(thing: {energy: number}|{store: StoreDefinition}, resourceType: ResourceConstant): number {
+		const anyThing = thing as any;
+		let amount = 0;
+		if (anyThing['store']) {
+			amount = anyThing['store'][resourceType] || 0;
+		} else if (anyThing['energy'] && resourceType === RESOURCE_ENERGY) {
+			amount = anyThing['energy'];
+		}
+		return amount;
+	}
+
 	/**
 	 * Check how much space is used in thing's reservoir (reservoir that can hold resourceType).
 	 * If resourceType is omitted, 'reservoir' in question is reservoir that could be filled with any resourceType.

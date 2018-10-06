@@ -93,7 +93,7 @@ export default class BuySellLogic {
 		const terminal: StructureTerminal|null = Game.getObjectById(Memory['mainTerminalId']);
 		if (terminal) {
 			const flag = terminal.pos.lookFor(LOOK_FLAGS)[0];
-			const softMaxResourceOrdersToConsiderPerTick = (flag && flag.name.match(/Flag\d+/) && flag.remove() === OK)
+			const softMaxResourceOrdersToConsiderPerTick = (flag && flag.name.match(/^Flag\d+$/) && flag.remove() === OK)
 				? 1000
 				: softMaxResourceOrdersToConsiderPerTickDefault;
 

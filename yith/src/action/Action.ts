@@ -105,9 +105,9 @@ export default class Action {
 		));
 	}
 
-	static collect(creep: Creep, container: StructureContainer|Tombstone) {
+	static collect(creep: Creep, container: StructureContainer|Tombstone, resourceType: ResourceConstant) {
 		ActionQ.push(creep, new CollectAction(
-			container
+			container, resourceType
 		));
 	}
 
@@ -117,9 +117,9 @@ export default class Action {
 		));
 	}
 
-	static deliver(creep: Creep, structure: Structure) {
+	static deliver(creep: Creep, structure: Structure, resourceType: ResourceConstant) {
 		ActionQ.push(creep, new DeliverAction(
-			structure
+			structure, resourceType
 		));
 	}
 
@@ -197,11 +197,11 @@ export default class Action {
 		if (target) {
 			//console.log('fillEnergy() duration E: ', new Date().getTime() - start);
 			if ((target as any)['deathTime']) {
-				Action.collect(creep, target as Tombstone);
+				Action.collect(creep, target as Tombstone, RESOURCE_ENERGY);
 			} else if ((target as any)['resourceType']) {
 				Action.pickup(creep, target as Resource);
 			} else if ((target as any)['ticksToDecay']) {
-				Action.collect(creep, target as StructureContainer);
+				Action.collect(creep, target as StructureContainer, RESOURCE_ENERGY);
 			} else if (!(target as any)['structureType']) {
 				Action.harvest(creep, target as Source);
 			} else {
@@ -243,7 +243,7 @@ export default class Action {
 			roomCtrl = undefined;
 		}
 
-		if (target) Action.deliver(creep, target);
+		if (target) Action.deliver(creep, target, RESOURCE_ENERGY);
 		else if (roomCtrl) Action.upgrade(creep, roomCtrl);
 		else Action.idle(creep);
 	}

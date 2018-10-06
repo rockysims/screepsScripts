@@ -60,6 +60,7 @@ interface ResourceFlipPlans {
 export default class BuySellLogic {
 	static onTick() {
 		if (Game.time % 10 != 0) return;
+		if (All.rooms()[0].name == 'sim') return;
 
 		Timer.start("BuySellLogic.onTick()");
 

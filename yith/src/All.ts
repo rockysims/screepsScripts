@@ -12,6 +12,7 @@ interface AllCache {
 	extractors?: StructureExtractor[]
 	constructionSites?: ConstructionSite[]
 	droppedEnergyByRoom: {[roomName: string]: Resource[]}
+	droppedResourcesByRoom: {[roomName: string]: Resource[]}
 	tombstonesByRoom: {[roomName: string]: Tombstone[]}
 }
 
@@ -19,6 +20,7 @@ function getEmptyCache() {
 	return {
 		time: Game.time,
 		droppedEnergyByRoom: {},
+		droppedResourcesByRoom: {},
 		tombstonesByRoom: {}
 	};
 }
@@ -203,12 +205,21 @@ export default class All {
 		All.ensureFreshCache();
 
 		if (!All.cache.droppedEnergyByRoom[room.name]) {
-			All.cache.droppedEnergyByRoom[room.name] = room.find(FIND_DROPPED_RESOURCES, {
-				filter: (resource: Resource) => resource.resourceType == RESOURCE_ENERGY
-			});
+			All.cache.droppedEnergyByRoom[room.name] = All.droppedResourcesIn(room)
+				.filter(r => r.resourceType == RESOURCE_ENERGY);
 		}
 
 		return All.cache.droppedEnergyByRoom[room.name];
+	}
+
+	static droppedResourcesIn(room: Room): Resource[] {
+		All.ensureFreshCache();
+
+		if (!All.cache.droppedResourcesByRoom[room.name]) {
+			All.cache.droppedResourcesByRoom[room.name] = room.find(FIND_DROPPED_RESOURCES);
+		}
+
+		return All.cache.droppedResourcesByRoom[room.name];
 	}
 
 	static tombstonesIn(room: Room): Tombstone[] {

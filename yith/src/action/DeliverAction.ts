@@ -5,11 +5,13 @@ import Util from 'util/Util';
 export default class DeliverAction extends AbstractAction {
 	static type: string = 'deliver';
 	structureId: string;
+	resourceType: ResourceConstant;
 	child: MoveToRangeAction|undefined;
 
-	constructor(structure: Structure) {
+	constructor(structure: Structure, resourceType: ResourceConstant) {
 		super(DeliverAction.type);
 		this.structureId = structure.id;
+		this.resourceType = resourceType;
 	}
 
 	static run(creep: Creep, action: DeliverAction): boolean|number {
@@ -20,12 +22,12 @@ export default class DeliverAction extends AbstractAction {
 		}
 
 		const structure: Structure|undefined = Game.getObjectById(action.structureId) || undefined;
-		const creepEnergy = creep.carry.energy || 0;
-		//TODO: instead of !isFull do Util.getEnergy(structure) >= Util.getCapacity(structure) - 20
+		const creepCarryAmount = creep.carry[action.resourceType] || 0;
+		//TODO: instead of !isFull do Util.getEnergyIn(structure) >= Util.getCapacity(structure) - 20
 		//	to prevent feeding tower 10 energy at a time until all delivered
 		//		happens when tower is firing each tick
-		if (structure && !Util.isFull(structure, RESOURCE_ENERGY) && creepEnergy > 0) {
-			const result: number = creep.transfer(structure, RESOURCE_ENERGY);
+		if (structure && !Util.isFull(structure, action.resourceType) && creepCarryAmount > 0) {
+			const result: number = creep.transfer(structure, action.resourceType);
 			if (result == OK) {
 				return true;
 			} else if (result == ERR_NOT_IN_RANGE) {

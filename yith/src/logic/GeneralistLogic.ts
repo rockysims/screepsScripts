@@ -60,7 +60,7 @@ export default class GeneralistLogic {
 			let constructionSite: ConstructionSite|null = creep.pos.findClosestByPath(All.constructionSitesIn(creep.room));
 
 			if (roomCtrl && roomCtrl.ticksToDowngrade < CONTROLLER_DOWNGRADE[roomCtrl.level] - 4000) Action.upgrade(creep, roomCtrl);
-			else if (target) Action.deliver(creep, target);
+			else if (target) Action.deliver(creep, target, RESOURCE_ENERGY);
 			else if (constructionSite) Action.build(creep, constructionSite);
 			else if (roomCtrl) Action.upgrade(creep, roomCtrl);
 			else Action.idle(creep);

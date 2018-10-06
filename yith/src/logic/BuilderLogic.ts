@@ -55,10 +55,10 @@ export default class BuilderLogic {
 		let constructionSiteCount = All.constructionSitesIn(room).length;
 
 		if (constructionSiteCount > builderCount) {
-			let priority = 7;
+			let priority = 6;
 			if (builderCount > 0) {
 				let desiredSpawnsCount = Math.max(0, constructionSiteCount - builderCount);
-				priority = Math.min(3 + desiredSpawnsCount, 7);
+				priority = Math.min(3 + desiredSpawnsCount, 6);
 				priority = Math.max(1, priority - builderCount);
 			}
 			return {

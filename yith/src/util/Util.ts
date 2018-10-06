@@ -7,11 +7,16 @@ export default class Util {
 		return bodyParts.reduce((carry: number, bodyPart: BodyPartConstant) => carry + BODYPART_COST[bodyPart], 0);
 	}
 
-	static generateBodyFromSet(set: BodyPartConstant[], energyAvailable: number) {
-		const body = new Array(Math.floor(energyAvailable / Util.costOf(set)))
-			.fill(set)
-			.reduce((carry, s) => carry.concat(s), [])
-			.sort((a: BodyPartConstant, b: BodyPartConstant) => set.indexOf(a) - set.indexOf(b));
+	static generateBodyFromSet(set: BodyPartConstant[], energyAvailable: number, maxSets?: number): BodyPartConstant[] {
+		maxSets = maxSets || energyAvailable;
+		const setCost = Util.costOf(set);
+		const body: BodyPartConstant[] = [];
+		let setsCount = 0;
+		while (setCost <= energyAvailable && setsCount < maxSets) {
+			energyAvailable -= setCost;
+			body.push(... set);
+			setsCount++;
+		}
 		return body;
 	}
 
@@ -161,7 +166,7 @@ export default class Util {
 		return (typeof position == 'object')?(<any>position)['pos']:position;
 	}
 
-	static getEnergy(thing: Structure|{energy: number}|{store: StoreDefinition}): number {
+	static getEnergyIn(thing: Structure|{energy: number}|{store: StoreDefinition}): number {
 		const anyThing = thing as any;
 		let energy = 0;
 		if (anyThing['energy']) {
@@ -181,6 +186,16 @@ export default class Util {
 			amount = anyThing['energy'];
 		}
 		return amount;
+	}
+
+	static firstResourceTypeIn(store: StoreDefinition): ResourceConstant|null {
+		for (let key of Object.keys(store)) {
+			const resourceType = key as ResourceConstant;
+			if ((store[resourceType] || 0) > 0) {
+				return resourceType;
+			}
+		}
+		return null;
 	}
 
 	/**

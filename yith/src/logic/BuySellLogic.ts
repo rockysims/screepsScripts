@@ -84,7 +84,10 @@ export default class BuySellLogic {
 		const lackEnergyThreshold = 50000;
 		const extraEnergyThreshold = 200000;
 		const maxResourcesToConsiderPerTick = RESOURCES_ALL.length;
-		const softMaxResourceOrdersToConsiderPerTick = 25;
+		const softMaxResourceOrdersToConsiderPerTick = Memory['fullBuySellSearch']
+			? 1000
+			: 25;
+		delete Memory['fullBuySellSearch'];
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 

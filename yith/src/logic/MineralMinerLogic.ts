@@ -1,4 +1,4 @@
-import Log from "util/Log";
+// import Log from "util/Log";
 import Util from "util/Util";
 import Action from "action/Action";
 import All from 'All';
@@ -7,6 +7,9 @@ import Mem from "util/Mem";
 
 export default class MineralMinerLogic {
 	static onTick() {
+		return;  //TODO: delete this line and uncomment out method contents once system for taking minerals to terminal/storage is in place
+
+		/*
 		All.rooms().forEach(room => {
 			if (!room.controller || room.controller.level < 6) return; //can't mine minerals yet
 
@@ -84,6 +87,7 @@ export default class MineralMinerLogic {
 				return null;
 			}
 		}
+		//*/
 	}
 
 	static run(creep: Creep) {

@@ -82,9 +82,9 @@ export default class BuySellLogic {
 
 		const dryRunMode = false;
 		const lackFreeSpaceThreshold = 50000;
-		const lackEnergyThreshold = 50000;
-		const sellEnergyThreshold = 125000;
-		const sellMineralThreshold = Math.floor(150000 / (RESOURCES_ALL.length-1));
+		const extraEnergyThreshold = 50000;
+		const extraMineralThreshold = Math.floor(150000 / (RESOURCES_ALL.length-1));
+		const maxExtraToSellAtOnce = 5000;
 		const maxResourcesToConsiderPerTick = RESOURCES_ALL.length;
 		const softMaxResourceOrdersToConsiderPerTickDefault = 25;
 
@@ -231,7 +231,7 @@ export default class BuySellLogic {
 					+ " = $" + format(displayAmount * displayUnitPrice);
 
 				const enoughOnHand = (isEnergyPlan)
-					? (terminal.store[plan.resourceType] || 0) >= planAmount + lackEnergyThreshold
+					? (terminal.store[plan.resourceType] || 0) >= planAmount + extraEnergyThreshold
 					: (terminal.store[plan.resourceType] || 0) >= planAmount;
 				if (isInOrder && enoughOnHand) {
 					Log.log("SKIP " + dealStr);
@@ -309,18 +309,18 @@ export default class BuySellLogic {
 					}
 				} else {
 					const energyOnHand = terminal.store[RESOURCE_ENERGY] || 0;
-					const availableEnergyOnHand = Math.max(0, energyOnHand - lackEnergyThreshold);
-					const preferPurchasedEnergy = availableEnergyOnHand <= 25000;
+					const extraEnergyOnHand = Math.max(0, energyOnHand - extraEnergyThreshold);
+					const preferPurchasedEnergy = extraEnergyOnHand <= 25000;
 					const energyPlanForEstimate = (preferPurchasedEnergy)
 						? makeEnergyInPlan(terminalSpace, 8)
-						: makeEnergyOutPlan(availableEnergyOnHand, 8);
+						: makeEnergyOutPlan(extraEnergyOnHand, 8);
 					if (energyPlanForEstimate.netAmount > 0) {
 						const creditsPerEnergyEstimate = energyPlanForEstimate.netPrice / energyPlanForEstimate.netAmount;
 						const flipPlans = planToFlipResource(resourceType, creditsPerEnergyEstimate);
 						const resourceInPlan = flipPlans.resourceInPlan;
 						const resourceOutPlan = flipPlans.resourceOutPlan;
 						const energyUsed = resourceInPlan.energyCost + resourceOutPlan.energyCost;
-						const purchaseEnergy = preferPurchasedEnergy || availableEnergyOnHand < energyUsed;
+						const purchaseEnergy = preferPurchasedEnergy || extraEnergyOnHand < energyUsed;
 						const energyPlan = (purchaseEnergy)
 							? makeEnergyInPlan(energyUsed, 8)
 							: makeEnergyOutPlan(energyUsed, 8);
@@ -337,9 +337,9 @@ export default class BuySellLogic {
 								queuedFlipPlans = true;
 								Log.log("--- Queued Plans Report ---");
 								if (purchaseEnergy) {
-									Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+									Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
 								} else {
-									Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+									Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
 								}
 								Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
 								Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
@@ -353,9 +353,9 @@ export default class BuySellLogic {
 							if (profitWithoutEnergyCosts > 0) {
 								Log.log("--- Not Flipping Report ---");
 								if (purchaseEnergy) {
-									Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+									Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
 								} else {
-									Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, availableEnergyOnHand)) + " available)");
+									Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
 								}
 								Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
 								Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
@@ -378,7 +378,7 @@ export default class BuySellLogic {
 
 				for (let resourceType of RESOURCES_ALL) {
 					if (resourceType == RESOURCE_ENERGY) {
-						const extraEnergy = Util.amountIn(terminal, resourceType) - sellEnergyThreshold;
+						const extraEnergy = Math.min(maxExtraToSellAtOnce, Util.amountIn(terminal, resourceType) - extraEnergyThreshold);
 						if (extraEnergy > 0) {
 							const energyOutPlan = makeEnergyOutPlan(extraEnergy, 10);
 							queuePlans([energyOutPlan], terminal);
@@ -391,7 +391,7 @@ export default class BuySellLogic {
 					} else {
 						const creditsPerEnergyEstimate = makeCreditsPerEnergyEstimate();
 						if (creditsPerEnergyEstimate) {
-							const extraMineral = Util.amountIn(terminal, resourceType) - sellMineralThreshold;
+							const extraMineral = Math.min(maxExtraToSellAtOnce, Util.amountIn(terminal, resourceType) - extraMineralThreshold);
 							if (extraMineral > 0) {
 								const mineralOutPlan = makeResourceOutPlan(resourceType, extraMineral, 10, creditsPerEnergyEstimate);
 								queuePlans([mineralOutPlan], terminal);
@@ -413,11 +413,11 @@ export default class BuySellLogic {
 
 			function makeCreditsPerEnergyEstimate(): number|null {
 				const energyOnHand = terminal.store[RESOURCE_ENERGY] || 0;
-				const availableEnergyOnHand = Math.max(0, energyOnHand - lackEnergyThreshold);
-				const preferPurchasedEnergy = availableEnergyOnHand <= 25000;
+				const extraEnergyOnHand = Math.max(0, energyOnHand - extraEnergyThreshold);
+				const preferPurchasedEnergy = extraEnergyOnHand <= 25000;
 				const energyPlanForEstimate = (preferPurchasedEnergy)
 					? makeEnergyInPlan(terminalSpace + 1, 8)
-					: makeEnergyOutPlan(availableEnergyOnHand, 8);
+					: makeEnergyOutPlan(extraEnergyOnHand, 8);
 				return (energyPlanForEstimate.netAmount > 0)
 					? energyPlanForEstimate.netPrice / energyPlanForEstimate.netAmount
 					: null;

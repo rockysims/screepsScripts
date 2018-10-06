@@ -86,15 +86,17 @@ export default class BuySellLogic {
 		const sellEnergyThreshold = 125000;
 		const sellMineralThreshold = Math.floor(150000 / (RESOURCES_ALL.length-1));
 		const maxResourcesToConsiderPerTick = RESOURCES_ALL.length;
-		const softMaxResourceOrdersToConsiderPerTick = Memory['fullBuySellSearch']
-			? 1000
-			: 25;
-		delete Memory['fullBuySellSearch'];
+		const softMaxResourceOrdersToConsiderPerTickDefault = 25;
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 
 		const terminal: StructureTerminal|null = Game.getObjectById(Memory['mainTerminalId']);
 		if (terminal) {
+			const flag = terminal.pos.lookFor(LOOK_FLAGS)[0];
+			const softMaxResourceOrdersToConsiderPerTick = (flag && flag.name.match(/Flag\d+/) && flag.remove() === OK)
+				? 1000
+				: softMaxResourceOrdersToConsiderPerTickDefault;
+
 			const tickedPlans = tickPlans(terminal);
 			if (!tickedPlans) {
 				let considerCount = 0;

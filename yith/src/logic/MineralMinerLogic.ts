@@ -23,7 +23,7 @@ export default class MineralMinerLogic {
 				}
 
 				const container = Game.getObjectById(roomMem['mineralContainerId']);
-				if (!container) {
+				if (!container && mineral.mineralAmount > 0) {
 					const containerSitePoint: {x: number, y: number}|undefined = roomMem['mineralContainerSitePoint'];
 					if (containerSitePoint) {
 						delete roomMem['mineralContainerSitePoint'];
@@ -119,10 +119,13 @@ export default class MineralMinerLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
+		const mineral = All.mineralsIn(room)[0];
+		const mineralAmount = (mineral)?mineral.mineralAmount:0;
 		const roomHasExtractor = All.extractorsIn(room).length > 0;
 		const roomHasMineralMiner = All.creepsByRoleIn('mineralMiner', room).length > 0;
+		const container: StructureContainer|null = Game.getObjectById(Mem.of(room)['mineralContainerId']) || null;
 
-		const requestSpawn = roomHasExtractor && !roomHasMineralMiner;
+		const requestSpawn = !roomHasMineralMiner && container && roomHasExtractor && mineralAmount > 0;
 		if (requestSpawn) {
 			const priority = 5;
 			return {

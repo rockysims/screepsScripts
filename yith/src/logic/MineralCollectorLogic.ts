@@ -25,7 +25,7 @@ export default class MineralCollectorLogic {
 
 		if (mem['collecting']) {
 			//pickup
-
+			let actionQueued = false;
 			const tombstonesWithMinerals: Tombstone[] = All
 				.tombstonesIn(creep.room)
 				.filter(tombstone => {
@@ -37,6 +37,7 @@ export default class MineralCollectorLogic {
 				const resourceType = Util.firstResourceTypeIn(tombstone.store);
 				if (resourceType) {
 					Action.collect(creep, tombstone, resourceType);
+					actionQueued = true;
 				}
 			} else {
 				const mineralDrops: Resource[] = All
@@ -48,18 +49,20 @@ export default class MineralCollectorLogic {
 				if (mineralDrops.length > 0) {
 					const mineralDrop = mineralDrops[0];
 					Action.pickup(creep, mineralDrop);
+					actionQueued = true;
 				} else {
 					const container: StructureContainer|null = Game.getObjectById(Mem.of(room)['mineralContainerId']) || null;
 					if (container) {
 						const resourceType = Util.firstResourceTypeIn(container.store);
 						if (resourceType) {
 							Action.collect(creep, container, resourceType);
-						} else {
-							mem['collecting'] = false; //can't find anything to collect so stop collecting
+							actionQueued = true;
 						}
 					}
 				}
 			}
+
+			if (!actionQueued) mem['collecting'] = false; //can't find anything to collect so stop collecting
 		} else {
 			const target = room.terminal || room.storage;
 			if (target) {
@@ -76,13 +79,17 @@ export default class MineralCollectorLogic {
 	static generateSpawnRequest(room: Room): SpawnRequest {
 		const container: StructureContainer|null = Game.getObjectById(Mem.of(room)['mineralContainerId']) || null;
 		const roomHasMineralCollector = All.creepsByRoleIn('mineralCollector', room).length > 0;
+		const roomHasMineralMiner = All.creepsByRoleIn('mineralMiner', room).length > 0;
 
-		const requestSpawn = !roomHasMineralCollector && container && Util.usedSpaceIn(container) > 0;
+		const requestSpawn = !roomHasMineralCollector && (
+			(roomHasMineralMiner && !container)
+			|| (container && Util.usedSpaceIn(container) > 0)
+		);
 		if (requestSpawn) {
 			return {
 				priority: 5,
 				generateBody: (energyAvailable: number): BodyPartConstant[] => {
-					return Util.generateBodyFromSet([CARRY, MOVE], energyAvailable, 3);
+					return Util.generateBodyFromSet([CARRY, MOVE], energyAvailable, 4);
 				},
 				memory: {role: 'mineralCollector'}
 			};

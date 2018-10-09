@@ -59,7 +59,7 @@ interface ResourceFlipPlans {
 
 export default class BuySellLogic {
 	static onTick() {
-		if (Game.time % 10 != 0) return;
+		if ((Game.time+1) % 10 != 0) return;
 		if (All.rooms()[0].name == 'sim') return;
 
 		Timer.start("BuySellLogic.onTick()");
@@ -377,7 +377,12 @@ export default class BuySellLogic {
 			function considerQueuingSellExtraPlan(): boolean {
 				let queuedSellExtraPlan = false;
 
-				for (let resourceType of RESOURCES_ALL) {
+				//TODO: sell whatever we have the most extra(Resource)Threshold multiples of
+				//	for example, if we have 3x extraMineralThreshold amount of O
+				//	and 2x extraEnergyThreshold amount of energy
+				//	we should sell O even though we have more energy by absolute amount
+
+				for (let resourceType of RESOURCES_ALL.reverse()) {
 					if (resourceType == RESOURCE_ENERGY) {
 						const extraEnergy = Math.min(maxExtraToSellAtOnce, Util.amountIn(terminal, resourceType) - extraEnergyThreshold);
 						if (extraEnergy > 0) {
@@ -697,75 +702,46 @@ export default class BuySellLogic {
 	}
 
 	static run(room: Room) {
-		return "ignoring BuySellLogic::run() from room " + room.name;
-		// Log.log("ignoring BuySellLogic::run() from room " + room.name);
+		if (Game.time % 10 != 0) return;
 
-		// if (Game.time % 10 != 0) return;
-		// const start = new Date().getTime();
-		// console.log('BuySellLogic::run() start');
-		//
-		// const amountToSell = 10000;
-		// const maxFee = amountToSell;
-		// const minPrice = 0.03;
-		//
-		// const terminal = room.terminal;
-		// if (terminal) {
-		// 	if (terminal.cooldown == 0 && terminal.store[RESOURCE_ENERGY] >= amountToSell + maxFee) {
-		//
-		// 		const orders = Game.market
-		// 			.getAllOrders({type: ORDER_BUY, resourceType: RESOURCE_ENERGY})
-		// 			.filter((order: Order) => order.roomName && order.remainingAmount > 0);
-		// 		//console.log('orders: ', JSON.stringify(orders));
-		//
-		// 		const sortedOrdersData = orders
-		// 			.filter(o => o.price >= minPrice)
-		// 			.map(order => {
-		// 				const credits = amountToSell * order.price;
-		// 				const fee = Game.market.calcTransactionCost(amountToSell, room.name, order.roomName as string)
-		// 					|| maxFee + 1;
-		// 				//console.log('{id: order.id, credits: credits, fee: fee}: ', JSON.stringify({id: order.id, credits: credits, fee: fee}));
-		// 				return {id: order.id, credits: credits, fee: fee};
-		// 			})
-		// 			.filter(o => o.fee <= maxFee)
-		// 			.sort((a, b) => a.fee - b.fee) //lowest first
-		// 			.sort((a, b) => b.credits - a.credits); //highest first
-		// 		const sortedOrderIds = sortedOrdersData.map(o => o.id);
-		// 		sortedOrdersData.forEach((d, i) => {
-		// 			console.log('sortedOrdersData['+i+']: ', JSON.stringify(d));
-		// 		});
-		//
-		// 		console.log('sortedOrdersData[0]: ', JSON.stringify(sortedOrdersData[0]));
-		//
-		// 		const orderId = sortedOrderIds[0];
-		// 		if (orderId) {
-		// 			const dealResult = Game.market.deal(orderId, amountToSell, room.name);
-		// 			console.log('dealResult: ', dealResult);
-		// 		}
-		// 	} else {
-		// 		Log.log('waiting for terminal cooldown || for ' + (amountToSell + maxFee) +' energy');
-		// 	}
-		//
-		// 	console.log('BuySellLogic::run() duration: ', new Date().getTime() - start);
-		// } else {
-		// 	var maxTerminals = Util.maxStructureCountIn(STRUCTURE_TERMINAL, room);
-		//
-		//
-		// 	if (maxTerminals > 0) {
-		// 		//const pattern = BuildPattern.forRoom(room);
-		// 		//const terminalPos = pattern.getTerminalPos();
-		//
-		//
-		// 		//const terminalPos = BuildPattern.forRoom(room).terminal;
-		//
-		//
-		// 		const terminalPos = null;
-		// 		if (terminalPos) {
-		// 			room.createConstructionSite(terminalPos, STRUCTURE_TERMINAL);
-		// 		} else {
-		// 			Log.error('Failed to find pos to build terminal in ' + room.name);
-		// 		}
-		// 	}
-		// }
+		const terminal = room.terminal;
+		if (!terminal) {
+			const terminalSite = All.constructionSitesIn(room, STRUCTURE_TERMINAL)[0];
+			if (!terminalSite) {
+				let maxTerminals = Util.maxStructureCountIn(STRUCTURE_TERMINAL, room);
+				if (maxTerminals > 0) {
+					let pos: RoomPosition|undefined;
+
+					//pos = closest tile to spawn where is plains and all 4 sides are plains|swamp
+					let spawn: StructureSpawn = All.spawnsIn(room)[0];
+					if (spawn) {
+						let origin: RoomPosition = spawn.pos;
+						let n = 9; //skip first 8
+						while (n != -1 && n < 150) {
+							let nthPos: RoomPosition|undefined = Util.getNthClosest(origin, n);
+							if (nthPos) {
+								if (Util.terrainMatch([nthPos], ['plain']) && Util.isBuildable([nthPos])) {
+									let sides = Util.getAdjacent4(nthPos);
+									if (Util.terrainMatch(sides, ['plain', 'swamp']) && Util.isBuildable(sides)) {
+										//found valid pos
+										pos = nthPos;
+										break;
+									}
+								}
+							}
+
+							n++;
+						}
+					}
+
+					if (pos) {
+						room.createConstructionSite(pos, STRUCTURE_TERMINAL);
+					} else {
+						Log.error('Failed to find pos to build terminal in ' + room.name);
+					}
+				}
+			}
+		}
 	}
 
 	static generateSpawnRequest(): SpawnRequest {

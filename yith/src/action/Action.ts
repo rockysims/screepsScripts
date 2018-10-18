@@ -7,6 +7,8 @@ import PickupAction from 'action/PickupAction';
 import DeliverAction from 'action/DeliverAction';
 import UpgradeAction from 'action/UpgradeAction';
 import BuildAction from 'action/BuildAction';
+import AttackAction from "action/AttackAction";
+import HealAction from "action/HealAction";
 import ActionQ from 'action/ActionQ';
 import Util from 'util/Util';
 import Log from 'util/Log';
@@ -48,6 +50,10 @@ export default class Action {
 					actionResult = UpgradeAction.run(creep, action as UpgradeAction);
 				else if (action.type == BuildAction.type)
 					actionResult = BuildAction.run(creep, action as BuildAction);
+				else if (action.type == AttackAction.type)
+					actionResult = AttackAction.run(creep, action as AttackAction);
+				else if (action.type == HealAction.type)
+					actionResult = HealAction.run(creep, action as HealAction);
 
 				if (actionResult == true) return true; //continued action
 				else if (actionResult == false) actions.pop(); //already finished action
@@ -71,6 +77,10 @@ export default class Action {
 		} finally {
 			creepMem['inActionContinue'] = false;
 		}
+	}
+
+	static clear(creep: Creep) {
+		ActionQ.clear(creep);
 	}
 
 	//---//
@@ -131,6 +141,18 @@ export default class Action {
 
 	static build(creep: Creep, target: ConstructionSite) {
 		ActionQ.push(creep, new BuildAction(
+			target
+		));
+	}
+
+	static attack(creep: Creep, target: Structure|Creep) {
+		ActionQ.push(creep, new AttackAction(
+			target
+		));
+	}
+
+	static heal(creep: Creep, target: Creep) {
+		ActionQ.push(creep, new HealAction(
 			target
 		));
 	}

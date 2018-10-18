@@ -122,7 +122,7 @@ export default class MineralMinerLogic {
 		const mineral = All.mineralsIn(room)[0];
 		const mineralAmount = (mineral)?mineral.mineralAmount:0;
 		const roomHasExtractor = All.extractorsIn(room).length > 0;
-		const roomHasMineralMiner = All.creepsByRoleIn('mineralMiner', room).length > 0;
+		const roomHasMineralMiner = All.creepsByRoleIn('mineralMiner', room, true).length > 0;
 		const container: StructureContainer|null = Game.getObjectById(Mem.of(room)['mineralContainerId']) || null;
 
 		const requestSpawn = !roomHasMineralMiner && container && roomHasExtractor && mineralAmount > 0;

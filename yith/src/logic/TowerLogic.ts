@@ -5,7 +5,8 @@ import All from 'All';
 
 export default class TowerLogic {
 	static onTick() {
-		All.rooms().forEach((room) => {
+		const roomsWithSpawners = All.rooms().filter(r => All.spawnsIn(r).length > 0);
+		roomsWithSpawners.forEach((room) => {
 			let constructingTowerCount: number = All
 				.constructionSitesIn(room)
 				.filter((constructionSite: ConstructionSite) => constructionSite.structureType == STRUCTURE_TOWER)

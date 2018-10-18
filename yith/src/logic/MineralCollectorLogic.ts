@@ -78,8 +78,8 @@ export default class MineralCollectorLogic {
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
 		const container: StructureContainer|null = Game.getObjectById(Mem.of(room)['mineralContainerId']) || null;
-		const roomHasMineralCollector = All.creepsByRoleIn('mineralCollector', room).length > 0;
-		const roomHasMineralMiner = All.creepsByRoleIn('mineralMiner', room).length > 0;
+		const roomHasMineralCollector = All.creepsByRoleIn('mineralCollector', room, true).length > 0;
+		const roomHasMineralMiner = All.creepsByRoleIn('mineralMiner', room, true).length > 0;
 
 		const requestSpawn = !roomHasMineralCollector && (
 			(roomHasMineralMiner && !container)

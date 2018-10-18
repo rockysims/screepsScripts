@@ -56,7 +56,7 @@ export default class All {
 		return All.cache.spawns;
 	}
 
-	static creeps(): Creep[] {
+	static creeps(includeSpawning?: boolean): Creep[] {
 		All.ensureFreshCache();
 
 		if (!All.cache.creeps) {
@@ -64,7 +64,12 @@ export default class All {
 				.map(key => Game.creeps[key]);
 		}
 
-		return All.cache.creeps;
+		return (includeSpawning)
+			? All.cache.creeps
+			: All.cache.creeps
+				.filter((creep: Creep) => {
+					return !creep.spawning;
+				});
 	}
 
 	static towers(): StructureTower[] {
@@ -154,10 +159,13 @@ export default class All {
 			.filter((spawn: StructureSpawn) => spawn.room.name == room.name);
 	}
 
-	static creepsIn(room: Room): Creep[] {
+	static creepsIn(room: Room, includeSpawning?: boolean): Creep[] {
 		return All
-			.creeps()
-			.filter((creep: Creep) => creep.room.name == room.name);
+			.creeps(includeSpawning)
+			.filter((creep: Creep) => {
+				return creep.room.name == room.name
+					&& (includeSpawning || !creep.spawning)
+			});
 	}
 
 	static towersIn(room: Room): StructureTower[] {
@@ -184,9 +192,9 @@ export default class All {
 			.filter((extractor: StructureExtractor) => extractor.room.name == room.name);
 	}
 
-	static creepsByRoleIn(role: string, room: Room): Creep[] {
+	static creepsByRoleIn(role: string, room: Room, includeSpawning?: boolean): Creep[] {
 		return All
-			.creepsIn(room)
+			.creepsIn(room, includeSpawning)
 			.filter((creep) => Mem.of(creep)['role'] == role);
 	}
 

@@ -131,7 +131,7 @@ export default class MinerLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		const minerCount = All.creepsByRoleIn('miner', room).length;
+		const minerCount = All.creepsByRoleIn('miner', room, true).length;
 		const sourceCount = All.sourcesIn(room).length;
 		const minerCountainerCount = Store.minerContainersIn(room).length;
 

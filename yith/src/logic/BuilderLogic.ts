@@ -50,7 +50,7 @@ export default class BuilderLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		let countByRole = Util.countByRole(All.creepsIn(room));
+		let countByRole = Util.countByRole(All.creepsIn(room, true));
 		let builderCount = countByRole['builder'] || 0;
 		let constructionSiteCount = All.constructionSitesIn(room).length;
 

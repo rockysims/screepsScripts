@@ -10,6 +10,7 @@ import MinerLogic from 'logic/MinerLogic';
 import MineralMinerLogic from 'logic/MineralMinerLogic';
 import MineralCollectorLogic from 'logic/MineralCollectorLogic';
 import TowerLogic from 'logic/TowerLogic';
+import WarLogic from "logic/WarLogic";
 import Mem from "util/Mem";
 import All from "All";
 //import carrierLogic from 'logic/CarrierLogic';
@@ -45,40 +46,32 @@ export const loop = function(): void {
 	MinerLogic.onTick();
 	MineralMinerLogic.onTick();
 	MineralCollectorLogic.onTick();
+	WarLogic.onTick();
 	//CarrierLogic.onTick();
 	//UpgraderLogic.onTick();
 	//RepairerLogic.onTick();
 
-	//tick multi room creeps
-	//All.creeps().forEach((creep: Creep) => {
-	//	let role = creep.memory.role;
-	//	if (role == 'a') aLogic.run(creep);
-	//	else if (role == 'b') bLogic.run(creep);
-	//	else if (role == 'c') cLogic.run(creep);
-	//	else Log.warn('Unknown role: ' + role);
-	//});
-
 	//tick rooms
-	All.rooms().forEach((room: Room) => {
+	const roomsWithSpawners = All.rooms().filter(r => All.spawnsIn(r).length > 0);
+	roomsWithSpawners.forEach((room: Room) => {
 		BuySellLogic.run(room);
 		RoomLogic.run(room);
+		WarLogic.run(room);
 
 		//tick towers in room
 		All.towersIn(room).forEach(tower => TowerLogic.run(tower));
 
 		//tick single room creeps
 		All.creepsIn(room).forEach((creep: Creep) => {
-			if (!creep.spawning) {
-				let role = Mem.of(creep)['role'];
-				if (role == 'generalist') GeneralistLogic.run(creep);
-				else if (role == 'builder') BuilderLogic.run(creep);
-				else if (role == 'miner') MinerLogic.run(creep);
-				else if (role == 'mineralMiner') MineralMinerLogic.run(creep);
-				else if (role == 'mineralCollector') MineralCollectorLogic.run(creep);
-				//else if (role == 'carrier') CarrierLogic.run(creep);
-				//else if (role == 'upgrader') UpgraderLogic.run(creep);
-				//else if (role == 'repairer') RepairerLogic.run(creep);
-			}
+			let role = Mem.of(creep)['role'];
+			if (role == 'generalist') GeneralistLogic.run(creep);
+			else if (role == 'builder') BuilderLogic.run(creep);
+			else if (role == 'miner') MinerLogic.run(creep);
+			else if (role == 'mineralMiner') MineralMinerLogic.run(creep);
+			else if (role == 'mineralCollector') MineralCollectorLogic.run(creep);
+			//else if (role == 'carrier') CarrierLogic.run(creep);
+			//else if (role == 'upgrader') UpgraderLogic.run(creep);
+			//else if (role == 'repairer') RepairerLogic.run(creep);
 		});
 
 		//fill spawnRequests[]
@@ -88,6 +81,7 @@ export const loop = function(): void {
 		spawnRequests.push(MinerLogic.generateSpawnRequest(room));
 		spawnRequests.push(MineralMinerLogic.generateSpawnRequest(room));
 		spawnRequests.push(MineralCollectorLogic.generateSpawnRequest(room));
+		spawnRequests.push(WarLogic.generateSpawnRequest(room));
 		//spawnRequests.push(CarrierLogic.generateSpawnRequest(room));
 		//spawnRequests.push(UpgraderLogic.generateSpawnRequest(room));
 		//spawnRequests.push(RepairerLogic.generateSpawnRequest(room));

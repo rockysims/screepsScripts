@@ -48,7 +48,7 @@ export default class GeneralistLogic {
 			let roomCtrl: StructureController|undefined = creep.room.controller;
 
 			const terminal = creep.room.terminal;
-			if (terminal) {
+			if (terminal && (roomCtrl && roomCtrl.level >= 7)) {
 				const terminalSpace = Util.freeSpaceIn(terminal);
 				const terminalEnergy = terminal.store[RESOURCE_ENERGY];
 				const terminalWantsEnergy = terminalEnergy < 100000 || (roomCtrl && roomCtrl.level >= 8);
@@ -80,7 +80,7 @@ export default class GeneralistLogic {
 	}
 
 	static generateSpawnRequest(room: Room): SpawnRequest {
-		const countByRole: {[role: string]: number} = Util.countByRole(All.creepsIn(room));
+		const countByRole: {[role: string]: number} = Util.countByRole(All.creepsIn(room, true));
 		const generalistCount = countByRole['generalist'] || 0;
 		const roomCtrlLevel = (!room.controller)?0:room.controller.level;
 		const generalistMax = room.controller

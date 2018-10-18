@@ -1,22 +1,26 @@
 import Mem from "util/Mem";
 import Log from "util/Log";
-import All from "All";
 
 export default class Util {
 	static costOf(bodyParts: BodyPartConstant[]): number {
 		return bodyParts.reduce((carry: number, bodyPart: BodyPartConstant) => carry + BODYPART_COST[bodyPart], 0);
 	}
 
-	static generateBodyFromSet(set: BodyPartConstant[], energyAvailable: number, maxSets?: number): BodyPartConstant[] {
+	static generateBodyFromSet(set: BodyPartConstant[], energyAvailable: number, maxSets?: number|null, sorted?: boolean): BodyPartConstant[] {
 		maxSets = maxSets || energyAvailable;
 		const setCost = Util.costOf(set);
 		const body: BodyPartConstant[] = [];
 		let setsCount = 0;
-		while (setCost <= energyAvailable && setsCount < maxSets) {
+		while (setCost <= energyAvailable && setsCount < maxSets && body.length + set.length <= 50) { //50 is max body parts allowed
 			energyAvailable -= setCost;
 			body.push(... set);
 			setsCount++;
 		}
+
+		if (sorted) {
+			body.sort((a: BodyPartConstant, b: BodyPartConstant) => set.indexOf(a) - set.indexOf(b));
+		}
+
 		return body;
 	}
 
@@ -30,8 +34,8 @@ export default class Util {
 		return countByRole;
 	}
 
-	static countByRoleInRoom(role: string, room: Room): number {
-		return Util.countByRole(All.creepsIn(room))[role] || 0;
+	static filterByRole(creeps: Creep[], role: string): Creep[] {
+		return creeps.filter(creep => Mem.of(creep)['role'] == role);
 	}
 
 	static maxStructureCountIn(type: BuildableStructureConstant, room: Room): number {
@@ -77,6 +81,10 @@ export default class Util {
 		});
 
 		return buildable;
+	}
+
+	static isRoomExit(pos: RoomPosition) {
+		return pos.x == 0 || pos.x == 49 || pos.y == 0 || pos.y == 49;
 	}
 
 	static getAdjacent(pos: RoomPosition, deltas: Array<{ x: number; y: number }>): RoomPosition[] {
@@ -163,7 +171,7 @@ export default class Util {
 	}
 
 	static posOf(position: RoomPosition|{pos: RoomPosition}): RoomPosition {
-		return (typeof position == 'object')?(<any>position)['pos']:position;
+		return ((<any>position)['pos'])?(<any>position)['pos']:position;
 	}
 
 	static getEnergyIn(thing: Structure|{energy: number}|{store: StoreDefinition}): number {

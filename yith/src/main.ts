@@ -11,6 +11,7 @@ import MineralMinerLogic from 'logic/MineralMinerLogic';
 import MineralCollectorLogic from 'logic/MineralCollectorLogic';
 import TowerLogic from 'logic/TowerLogic';
 import WarLogic from "logic/WarLogic";
+import ClaimLogic from "logic/ClaimLogic";
 import Mem from "util/Mem";
 import All from "All";
 //import carrierLogic from 'logic/CarrierLogic';
@@ -47,6 +48,7 @@ export const loop = function(): void {
 	MineralMinerLogic.onTick();
 	MineralCollectorLogic.onTick();
 	WarLogic.onTick();
+	ClaimLogic.onTick();
 	//CarrierLogic.onTick();
 	//UpgraderLogic.onTick();
 	//RepairerLogic.onTick();
@@ -57,6 +59,7 @@ export const loop = function(): void {
 		BuySellLogic.run(room);
 		RoomLogic.run(room);
 		WarLogic.run(room);
+		ClaimLogic.run(room);
 
 		//tick towers in room
 		All.towersIn(room).forEach(tower => TowerLogic.run(tower));
@@ -82,6 +85,7 @@ export const loop = function(): void {
 		spawnRequests.push(MineralMinerLogic.generateSpawnRequest(room));
 		spawnRequests.push(MineralCollectorLogic.generateSpawnRequest(room));
 		spawnRequests.push(WarLogic.generateSpawnRequest(room));
+		spawnRequests.push(ClaimLogic.generateSpawnRequest(room));
 		//spawnRequests.push(CarrierLogic.generateSpawnRequest(room));
 		//spawnRequests.push(UpgraderLogic.generateSpawnRequest(room));
 		//spawnRequests.push(RepairerLogic.generateSpawnRequest(room));

@@ -108,7 +108,7 @@ export default class WarLogic {
 		const requestTankSpawn = warFlags.length > 0 && warTankCount <= 0;
 		if (requestHealSpawn) {
 			return {
-				priority: 1,
+				priority: 2,
 				generateBody: (energyAvailable: number): BodyPartConstant[] => {
 
 

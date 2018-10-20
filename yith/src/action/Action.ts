@@ -9,6 +9,7 @@ import UpgradeAction from 'action/UpgradeAction';
 import BuildAction from 'action/BuildAction';
 import AttackAction from "action/AttackAction";
 import HealAction from "action/HealAction";
+import ClaimAction from "action/ClaimAction";
 import ActionQ from 'action/ActionQ';
 import Util from 'util/Util';
 import Log from 'util/Log';
@@ -54,6 +55,8 @@ export default class Action {
 					actionResult = AttackAction.run(creep, action as AttackAction);
 				else if (action.type == HealAction.type)
 					actionResult = HealAction.run(creep, action as HealAction);
+				else if (action.type == ClaimAction.type)
+					actionResult = ClaimAction.run(creep, action as ClaimAction);
 
 				if (actionResult == true) return true; //continued action
 				else if (actionResult == false) actions.pop(); //already finished action
@@ -153,6 +156,12 @@ export default class Action {
 
 	static heal(creep: Creep, target: Creep) {
 		ActionQ.push(creep, new HealAction(
+			target
+		));
+	}
+
+	static claim(creep: Creep, target: StructureController) {
+		ActionQ.push(creep, new ClaimAction(
 			target
 		));
 	}

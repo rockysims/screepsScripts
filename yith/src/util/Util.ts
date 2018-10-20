@@ -255,6 +255,17 @@ export default class Util {
 	static isFull(thing: any, resourceType?: ResourceConstant) {
 		return Util.freeSpaceIn(thing, resourceType) <= 0;
 	}
+
+	static ownedByMe(thing: {my: boolean}|Room|undefined): boolean {
+		const anyThing = thing as any;
+		if (anyThing.my) {
+			return anyThing.my;
+		} else if (anyThing.controller) {
+			return anyThing.controller.my;
+		} else {
+			return false;
+		}
+	}
 }
 
 

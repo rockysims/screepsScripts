@@ -12,6 +12,7 @@ import MineralCollectorLogic from 'logic/MineralCollectorLogic';
 import TowerLogic from 'logic/TowerLogic';
 import WarLogic from "logic/WarLogic";
 import ClaimLogic from "logic/ClaimLogic";
+import Util from "util/Util";
 import Mem from "util/Mem";
 import All from "All";
 //import carrierLogic from 'logic/CarrierLogic';
@@ -106,8 +107,8 @@ export const loop = function(): void {
 
 		//try to use spawn to execute spawnRequest
 		if (spawn && spawnRequest) {
-			Log.log("try to spawn " + spawnRequest.memory.role);
 			let body: BodyPartConstant[] = spawnRequest.generateBody(room.energyCapacityAvailable);
+			Log.log("try to spawn " + spawnRequest.memory.role + " for " + Util.costOf(body) + " energy.");
 			let memory: {role: string} = spawnRequest.memory;
 			Memory['nextCreepId'] = Memory['nextCreepId'] || 0;
 			let result = spawn.spawnCreep(body,  memory.role + " #" + Memory['nextCreepId'], {memory: memory});

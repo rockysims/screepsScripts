@@ -86,7 +86,7 @@ export default class GeneralistLogic {
 		const generalistMax = room.controller
 			?((roomCtrlLevel == 1)
 				?2
-				:(6 - Math.min(roomCtrlLevel - 2, 4))
+				:(16 - Math.min(roomCtrlLevel*2, 14))
 			)
 			:0;
 		const requestSpawn = (countByRole['generalist'] || 0) < generalistMax

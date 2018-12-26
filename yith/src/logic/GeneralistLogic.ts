@@ -48,7 +48,7 @@ export default class GeneralistLogic {
 			let roomCtrl: StructureController|undefined = creep.room.controller;
 
 			const terminal = creep.room.terminal;
-			if (terminal && (roomCtrl && roomCtrl.level >= 7)) {
+			if (terminal && (roomCtrl && roomCtrl.level >= 6)) {
 				const terminalSpace = Util.freeSpaceIn(terminal);
 				const terminalEnergy = terminal.store[RESOURCE_ENERGY];
 				const terminalWantsEnergy = terminalEnergy < 100000 || (roomCtrl && roomCtrl.level >= 8);

@@ -154,7 +154,7 @@ export default class MineralMinerLogic {
 						}
 					}
 
-					return body;
+					return body.slice(0, 50); //50 is max body parts allowed
 				},
 				memory: {role: 'mineralMiner'}
 			};

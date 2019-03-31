@@ -108,7 +108,7 @@ export const loop = function(): void {
 		//try to use spawn to execute spawnRequest
 		if (spawn && spawnRequest) {
 			let body: BodyPartConstant[] = spawnRequest.generateBody(room.energyCapacityAvailable);
-			Log.log("try to spawn " + spawnRequest.memory.role + " for " + Util.costOf(body) + " energy.");
+			Log.log("try to spawn " + spawnRequest.memory.role + " for " + Util.costOf(body) + " energy (" + room.energyAvailable + " now).");
 			let memory: {role: string} = spawnRequest.memory;
 			Memory['nextCreepId'] = Memory['nextCreepId'] || 0;
 			let result = spawn.spawnCreep(body,  memory.role + " #" + Memory['nextCreepId'], {memory: memory});

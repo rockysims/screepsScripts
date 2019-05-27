@@ -64,11 +64,13 @@ export default class BuySellLogic {
 
 		Timer.start("BuySellLogic.onTick()");
 
+		let nuker = null;
 		if (!Memory['mainTerminalId']) {
 			const room = All.rooms().filter(r => !!r.terminal)[0];
 			if (room && room.terminal) {
 				Memory['mainTerminalId'] = room.terminal.id;
 			}
+			nuker = All.nukerIn(room);
 		}
 
 		const cache: {
@@ -84,10 +86,17 @@ export default class BuySellLogic {
 		const dryRunMode = false;
 		const lackFreeSpaceThreshold = 50000;
 		const extraEnergyThreshold = 50000;
-		const extraMineralThreshold = Math.floor(150000 / (RESOURCES_ALL.length-1));
 		const maxExtraToSellAtOnce = 5000;
+		const maxReservesToBuyAtOnce = 5000;
 		const maxResourcesToConsiderPerTick = RESOURCES_ALL.length;
 		const softMaxResourceOrdersToConsiderPerTickDefault = 25;
+		const buyReservesThresholds: {[resourceType: string]: number} = {};
+		if (nuker) buyReservesThresholds[RESOURCE_GHODIUM] = 1000;
+		const mineralFlipSpace = 150000 - Object
+			.keys(buyReservesThresholds)
+			.map(key => buyReservesThresholds[key])
+			.reduce((acc, val) => acc + val, 0);
+		const extraMineralThreshold = Math.floor(mineralFlipSpace / (RESOURCES_ALL.length-1));
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 
@@ -233,7 +242,7 @@ export default class BuySellLogic {
 
 				const enoughOnHand = (isEnergyPlan)
 					? (terminal.store[plan.resourceType] || 0) >= planAmount + extraEnergyThreshold
-					: (terminal.store[plan.resourceType] || 0) >= planAmount;
+					: (terminal.store[plan.resourceType] || 0) >= planAmount && planAmount > 1; //'&& planAmount > 1' is to fix issue where order for 1 unit keeps showing up and causing selling 1 unit at a time over and over
 				if (isInOrder && enoughOnHand) {
 					Log.log("SKIP " + dealStr);
 					return 302;
@@ -281,6 +290,8 @@ export default class BuySellLogic {
 					const freeSpace = Util.freeSpaceIn(terminal);
 					if (freeSpace < lackFreeSpaceThreshold) {
 						queuedPlans = considerQueuingSellExtraPlan();
+					} else {
+						queuedPlans = considerQueuingBuyReservesPlan();
 					}
 				}
 			}
@@ -400,7 +411,8 @@ export default class BuySellLogic {
 
 				for (let resourceType of RESOURCES_ALL.reverse()) {
 					if (resourceType == RESOURCE_ENERGY) {
-						const extraEnergy = Math.min(maxExtraToSellAtOnce, Util.amountIn(terminal, resourceType) - extraEnergyThreshold);
+						const extraThreshold = extraEnergyThreshold + (buyReservesThresholds[RESOURCE_ENERGY] || 0);
+						const extraEnergy = Math.min(maxExtraToSellAtOnce, Util.amountIn(terminal, resourceType) - extraThreshold);
 						if (extraEnergy > 0) {
 							const energyOutPlan = makeEnergyOutPlan(extraEnergy, 10);
 							if (energyOutPlan !== null) {
@@ -415,7 +427,8 @@ export default class BuySellLogic {
 					} else {
 						const creditsPerEnergyEstimate = makeCreditsPerEnergyEstimate();
 						if (creditsPerEnergyEstimate) {
-							const extraMineral = Math.min(maxExtraToSellAtOnce, Util.amountIn(terminal, resourceType) - extraMineralThreshold);
+							const extraThreshold = extraMineralThreshold + (buyReservesThresholds[resourceType] || 0);
+							const extraMineral = Math.min(maxExtraToSellAtOnce, Util.amountIn(terminal, resourceType) - extraThreshold);
 							if (extraMineral > 0) {
 								const mineralOutPlan = makeResourceOutPlan(resourceType, extraMineral, 10, creditsPerEnergyEstimate);
 								if (mineralOutPlan !== null) {
@@ -435,6 +448,52 @@ export default class BuySellLogic {
 				}
 
 				return queuedSellExtraPlan;
+			}
+
+			function considerQueuingBuyReservesPlan() {
+				let queuedBuyReservePlan = false;
+
+				for (let key in buyReservesThresholds) {
+					const resourceType = key as ResourceConstant;
+					const buyThreshold = buyReservesThresholds[resourceType];
+
+					if (resourceType == RESOURCE_ENERGY) {
+						const neededEnergy = Math.min(maxReservesToBuyAtOnce, buyThreshold - Util.amountIn(terminal, resourceType));
+						if (neededEnergy > 0) {
+							const energyInPlan = makeEnergyInPlan(neededEnergy, 10);
+							if (energyInPlan !== null) {
+								queuePlans([energyInPlan], terminal);
+								queuedBuyReservePlan = true;
+								Log.log("--- Queued Plan Report ---");
+								Log.log("Buy reserve " + resourceType + ": " + format(energyInPlan.netAmount) + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
+								Log.log("--- --- ---");
+								break;
+							}
+						}
+					} else {
+						const creditsPerEnergyEstimate = makeCreditsPerEnergyEstimate();
+						if (creditsPerEnergyEstimate) {
+							const neededMineral = Math.min(maxReservesToBuyAtOnce, buyThreshold - Util.amountIn(terminal, resourceType));
+							if (neededMineral > 0) {
+								const mineralInPlan = makeResourceInPlan(resourceType, neededMineral, 10, creditsPerEnergyEstimate);
+								if (mineralInPlan !== null) {
+									queuePlans([mineralInPlan], terminal);
+									queuedBuyReservePlan = true;
+									Log.log("--- Queued Plan Report ---");
+									Log.log("Buy reserve " + resourceType + ": " + format(mineralInPlan.amount) + "@" + format(mineralInPlan.priceWithoutEnergy/mineralInPlan.amount, 5) + " = $" + format(mineralInPlan.priceWithoutEnergy));
+									Log.log("--- --- ---");
+									break;
+								}
+							}
+						} else {
+							Log.warn("Not trying to buy reserve " + resourceType + " because failed to make creditsPerEnergyEstimate.");
+							break;
+						}
+					}
+				}
+
+				return queuedBuyReservePlan;
+
 			}
 
 			function makeCreditsPerEnergyEstimate(): number|null {

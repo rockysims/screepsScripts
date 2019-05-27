@@ -6,6 +6,7 @@ interface AllCache {
 	spawns?: StructureSpawn[]
 	creeps?: Creep[]
 	towers?: StructureTower[]
+	nukers?: StructureNuker[]
 	structures?: Structure[]
 	extensions?: StructureExtension[]
 	containers?: StructureContainer[]
@@ -82,6 +83,18 @@ export default class All {
 		}
 
 		return All.cache.towers;
+	}
+
+	static nukers(): StructureNuker[] {
+		All.ensureFreshCache();
+
+		if (!All.cache.nukers) {
+			All.cache.nukers = <StructureNuker[]>All
+				.structures()
+				.filter((structure: Structure) => structure.structureType == STRUCTURE_NUKER);
+		}
+
+		return All.cache.nukers;
 	}
 
 	static structures(): Structure[] {
@@ -172,6 +185,13 @@ export default class All {
 		return All
 			.towers()
 			.filter((tower: StructureTower) => tower.room.name == room.name);
+	}
+
+	static nukerIn(room: Room): StructureNuker|null {
+		return All
+			.nukers()
+			.filter((nuker: StructureNuker) => nuker.room.name == room.name)
+			[0] || null;
 	}
 
 	static extensionsIn(room: Room): StructureExtension[] {

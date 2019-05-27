@@ -47,6 +47,13 @@ export default class GeneralistLogic {
 
 			let roomCtrl: StructureController|undefined = creep.room.controller;
 
+			if (!target) {
+				const nuker = All.nukerIn(creep.room);
+				if (nuker && Util.freeSpaceIn(nuker, RESOURCE_ENERGY) > 0) {
+					target = nuker;
+				}
+			}
+
 			const terminal = creep.room.terminal;
 			if (terminal && (roomCtrl && roomCtrl.level >= 6)) {
 				const terminalSpace = Util.freeSpaceIn(terminal);

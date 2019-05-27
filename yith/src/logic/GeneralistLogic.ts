@@ -47,6 +47,7 @@ export default class GeneralistLogic {
 
 			let roomCtrl: StructureController|undefined = creep.room.controller;
 
+			//TODO: consider prioritizing terminal over nuker when terminal is low on energy (<100000?)
 			if (!target) {
 				const nuker = All.nukerIn(creep.room);
 				if (nuker && Util.freeSpaceIn(nuker, RESOURCE_ENERGY) > 0) {

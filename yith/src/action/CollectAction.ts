@@ -7,11 +7,13 @@ export default class CollectAction extends AbstractAction {
 	targetId: string;
 	resourceType: ResourceConstant;
 	child: MoveToRangeAction|undefined;
+	maxAmount: number|null;
 
-	constructor(target: StructureContainer|Tombstone, resourceType: ResourceConstant) {
+	constructor(target: StructureContainer|StructureStorage|StructureTerminal|Tombstone, resourceType: ResourceConstant, maxAmount: number|null) {
 		super(CollectAction.type);
 		this.targetId = target.id;
 		this.resourceType = resourceType;
+		this.maxAmount = maxAmount;
 	}
 
 	static run(creep: Creep, action: CollectAction): boolean|number {
@@ -21,13 +23,17 @@ export default class CollectAction extends AbstractAction {
 			else action.child = undefined;
 		}
 
-		const target: StructureContainer|Tombstone|undefined = Game.getObjectById(action.targetId) || undefined;
+		const target: StructureContainer|StructureStorage|StructureTerminal|Tombstone|undefined
+			= Game.getObjectById(action.targetId) || undefined;
 		const creepCarryAmount = creep.carry[action.resourceType] || 0;
 		if (target
 			&& Util.amountIn(target, action.resourceType) > 0
 			&& creepCarryAmount < creep.carryCapacity
 		) {
-			const result: number = creep.withdraw(target, action.resourceType);
+			const amount = (action.maxAmount && action.maxAmount < Util.freeSpaceIn(creep))
+				? action.maxAmount
+				: undefined; //withdraw all that's available
+			const result: number = creep.withdraw(target, action.resourceType, amount);
 			if (result == OK) {
 				return false; //can withdraw all available at once so done collecting after first success
 			} else if (result == ERR_NOT_IN_RANGE) {

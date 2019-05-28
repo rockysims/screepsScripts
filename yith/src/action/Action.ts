@@ -118,9 +118,9 @@ export default class Action {
 		));
 	}
 
-	static collect(creep: Creep, container: StructureContainer|Tombstone, resourceType: ResourceConstant) {
+	static collect(creep: Creep, container: StructureContainer|StructureStorage|StructureTerminal|Tombstone, resourceType: ResourceConstant, maxAmount: number|null = null) {
 		ActionQ.push(creep, new CollectAction(
-			container, resourceType
+			container, resourceType, maxAmount
 		));
 	}
 

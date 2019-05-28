@@ -299,7 +299,7 @@ export default class BuySellLogic {
 			}
 			if (!queuedPlans) {
 				terminalRoomMem['resourceIndex'] = terminalRoomMem['resourceIndex'] || 0;
-				let queuedPlans = considerQueuingFlipPlans(RESOURCES_ALL[terminalRoomMem['resourceIndex']]);
+				queuedPlans = considerQueuingFlipPlans(RESOURCES_ALL[terminalRoomMem['resourceIndex']]);
 				if (!queuedPlans) {
 					terminalRoomMem['resourceIndex'] = (terminalRoomMem['resourceIndex'] + 1) % RESOURCES_ALL.length;
 				}

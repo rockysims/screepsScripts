@@ -64,14 +64,22 @@ export default class BuySellLogic {
 
 		Timer.start("BuySellLogic.onTick()");
 
-		let nuker = null;
-		if (!Memory['mainTerminalId']) {
+		let mainRoom: Room|null = (Memory['mainRoomName'])
+			? Game.rooms[Memory['mainRoomName']] || null
+			: null;
+		if (! (mainRoom && mainRoom.terminal)) {
 			const room = All.rooms().filter(r => !!r.terminal)[0];
 			if (room && room.terminal) {
-				Memory['mainTerminalId'] = room.terminal.id;
+				Memory['mainRoomName'] = room.name;
+				mainRoom = room;
 			}
-			nuker = All.nukerIn(room);
 		}
+		const terminal = (mainRoom)
+			? mainRoom.terminal || null
+			: null;
+		const nuker = (mainRoom)
+			? All.nukerIn(mainRoom)
+			: null;
 
 		const cache: {
 			energyBuyOrdersSortedByNetUnitPrice?: DecoratedEnergyOrder[],
@@ -91,7 +99,7 @@ export default class BuySellLogic {
 		const maxResourcesToConsiderPerTick = RESOURCES_ALL.length;
 		const softMaxResourceOrdersToConsiderPerTickDefault = 25;
 		const buyReservesThresholds: {[resourceType: string]: number} = {};
-		if (nuker) buyReservesThresholds[RESOURCE_GHODIUM] = 1000;
+		if (nuker) buyReservesThresholds[RESOURCE_GHODIUM] = Math.min(1000, Util.freeSpaceIn(nuker, RESOURCE_GHODIUM));
 		const mineralFlipSpace = 150000 - Object
 			.keys(buyReservesThresholds)
 			.map(key => buyReservesThresholds[key])
@@ -100,7 +108,6 @@ export default class BuySellLogic {
 
 		//TODO: add handling for case where I don't have enough credits to execute the plans
 
-		const terminal: StructureTerminal|null = Game.getObjectById(Memory['mainTerminalId']);
 		if (terminal) {
 			const flag = terminal.pos.lookFor(LOOK_FLAGS)[0];
 			const softMaxResourceOrdersToConsiderPerTick = (flag && flag.name.match(/^Flag\d+$/) && flag.remove() === OK)
@@ -281,18 +288,20 @@ export default class BuySellLogic {
 			const terminalRoomMem = Mem.of(terminalRoom);
 			const terminalSpace = Util.freeSpaceIn(terminal);
 
-			terminalRoomMem['resourceIndex'] = terminalRoomMem['resourceIndex'] || 0;
-			let queuedPlans = considerQueuingFlipPlans(RESOURCES_ALL[terminalRoomMem['resourceIndex']]);
+			let queuedPlans = false;
+			if (firstCall) {
+				const freeSpace = Util.freeSpaceIn(terminal);
+				if (freeSpace < lackFreeSpaceThreshold) {
+					queuedPlans = considerQueuingSellExtraPlan();
+				} else {
+					queuedPlans = considerQueuingBuyReservesPlan();
+				}
+			}
 			if (!queuedPlans) {
-				terminalRoomMem['resourceIndex'] = (terminalRoomMem['resourceIndex'] + 1) % RESOURCES_ALL.length;
-
-				if (firstCall) {
-					const freeSpace = Util.freeSpaceIn(terminal);
-					if (freeSpace < lackFreeSpaceThreshold) {
-						queuedPlans = considerQueuingSellExtraPlan();
-					} else {
-						queuedPlans = considerQueuingBuyReservesPlan();
-					}
+				terminalRoomMem['resourceIndex'] = terminalRoomMem['resourceIndex'] || 0;
+				let queuedPlans = considerQueuingFlipPlans(RESOURCES_ALL[terminalRoomMem['resourceIndex']]);
+				if (!queuedPlans) {
+					terminalRoomMem['resourceIndex'] = (terminalRoomMem['resourceIndex'] + 1) % RESOURCES_ALL.length;
 				}
 			}
 

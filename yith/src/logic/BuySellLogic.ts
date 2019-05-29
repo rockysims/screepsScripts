@@ -91,6 +91,7 @@ export default class BuySellLogic {
 			resourceSellOrdersSortedByAdjustedUnitPrice: {}
 		};
 
+		const verbosity = 3; //0 no logs, 1 warnings/errors, 2 actions, 3 all logs
 		const dryRunMode = false;
 		const lackFreeSpaceThreshold = 50000;
 		const extraEnergyThreshold = 50000;
@@ -131,7 +132,7 @@ export default class BuySellLogic {
 						resourceOrdersCached += (cache.resourceSellOrdersSortedByAdjustedUnitPrice[resourceType] || []).length;
 					}
 					if (resourceOrdersCached > softMaxResourceOrdersToConsiderPerTick) {
-						Log.log("resourceOrdersCached is " + resourceOrdersCached + " so done considering resources to flip for this tick.");
+						if (verbosity >= 3) Log.log("resourceOrdersCached is " + resourceOrdersCached + " so done considering resources to flip for this tick.");
 						break;
 					}
 				}
@@ -147,9 +148,11 @@ export default class BuySellLogic {
 			if (!terminalRoomMem['curPlans']) {
 				terminalRoomMem['curPlans'] = plans;
 			} else {
-				Log.error("Failed to queue new plans because curPlans still pending.");
-				Log.log("curPlans: " + JSON.stringify(terminalRoomMem['curPlans']));
-				Log.log("new plans: " + JSON.stringify(plans));
+				if (verbosity >= 1) Log.error("Failed to queue new plans because curPlans still pending.");
+				if (verbosity >= 3) {
+					Log.log("curPlans: " + JSON.stringify(terminalRoomMem['curPlans']));
+					Log.log("new plans: " + JSON.stringify(plans));
+				}
 			}
 		}
 
@@ -187,8 +190,8 @@ export default class BuySellLogic {
 						}
 					}
 
-					Log.log("curPlans orders worked/total: " + ordersWorked + "/" + ordersTotal);
-					Log.log("Done executing curPlans: " + JSON.stringify(curPlans));
+					if (verbosity >= 3) Log.log("curPlans orders worked/total: " + ordersWorked + "/" + ordersTotal);
+					if (verbosity >= 3) Log.log("Done executing curPlans: " + JSON.stringify(curPlans));
 				}
 			}
 
@@ -251,34 +254,34 @@ export default class BuySellLogic {
 					? (terminal.store[plan.resourceType] || 0) >= planAmount + extraEnergyThreshold
 					: (terminal.store[plan.resourceType] || 0) >= planAmount && planAmount > 1; //'&& planAmount > 1' is to fix issue where order for 1 unit keeps showing up and causing selling 1 unit at a time over and over
 				if (isInOrder && enoughOnHand) {
-					Log.log("SKIP " + dealStr);
+					if (verbosity >= 2) Log.log("SKIP " + dealStr);
 					return 302;
 				} else {
 					if (!dryRunMode) {
 						const result = Game.market.deal(order.id, order.amount, terminal.room.name);
 						order.result = result;
 						if (result == OK) {
-							Log.log(dealStr);
+							if (verbosity >= 2) Log.log(dealStr);
 						} else if (result == ERR_TIRED) {
-							Log.log("TIRED " + dealStr);
+							if (verbosity >= 3) Log.log("TIRED " + dealStr);
 						} else {
 							let resultName: string = "UNKNOWN";
 							if (result === ERR_FULL) resultName = "ERR_FULL";
 							if (result === ERR_NOT_OWNER) resultName = "ERR_NOT_OWNER";
 							if (result === ERR_INVALID_ARGS) resultName = "ERR_INVALID_ARGS";
 							if (result === ERR_NOT_ENOUGH_RESOURCES) resultName = "ERR_NOT_ENOUGH_RESOURCES";
-							Log.warn("FAILED " + dealStr
+							if (verbosity >= 1) Log.warn("FAILED " + dealStr
 								+ " result: " + result + "(" + resultName + ")"
 								+ " " + order.id);
 						}
 						return result;
 					} else { //dryRunMode
-						Log.log("WOULD " + dealStr);
+						if (verbosity >= 2) Log.log("WOULD " + dealStr);
 						return OK;
 					}
 				}
 			} else {
-				Log.error("No order " + order.id);
+				if (verbosity >= 1) Log.error("No order " + order.id);
 				return -404;
 			}
 		}
@@ -324,16 +327,18 @@ export default class BuySellLogic {
 						if (profit > 0) {
 							queuePlans([energyInPlan, energyOutPlan], terminal);
 							queuedFlipPlans = true;
-							Log.log("--- Queued Plans Report ---");
-							Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
-							Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
-							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
-							Log.log("--- --- ---");
+							if (verbosity >= 3) {
+								Log.log("--- Queued Plans Report ---");
+								Log.log("Buy: " + energyInPlan.netAmount + "@" + format(energyInPlan.netPrice / energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
+								Log.log("Sell: " + energyOutPlan.netAmount + "@" + format(energyOutPlan.netPrice / energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
+								Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
+								Log.log("--- --- ---");
+							}
 						} else {
-							Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
+							if (verbosity >= 3) Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
 						}
 					} catch (reason) {
-						Log.warn("Not trying to flip " + resourceType + " because " + reason);
+						if (verbosity >= 3) Log.warn("Not trying to flip " + resourceType + " because " + reason);
 					}
 				} else {
 					const energyOnHand = terminal.store[RESOURCE_ENERGY] || 0;
@@ -366,44 +371,48 @@ export default class BuySellLogic {
 											: [resourceInPlan, resourceOutPlan];
 										queuePlans(plansToQueue, terminal);
 										queuedFlipPlans = true;
-										Log.log("--- Queued Plans Report ---");
-										if (purchaseEnergy) {
-											Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
-										} else {
-											Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
+										if (verbosity >= 3) {
+											Log.log("--- Queued Plans Report ---");
+											if (purchaseEnergy) {
+												Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice / energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
+											} else {
+												Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice / energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
+											}
+											Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy / resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+											Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy / resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
+											Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
+											Log.log("--- --- ---");
 										}
-										Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
-										Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
-										Log.log("Profit in theory: $" + format(profit) + " on " + resourceType);
-										Log.log("--- --- ---");
 									} else {
-										Log.warn("Failed to flip " + resourceType + " because not enough energy on market." + ((purchaseEnergy)?"":" !purchaseEnergy"));
+										if (verbosity >= 1) Log.warn("Failed to flip " + resourceType + " because not enough energy on market." + ((purchaseEnergy)?"":" !purchaseEnergy"));
 									}
 								} else {
 									const profitWithoutEnergyCosts = resourceOutPlan.priceWithoutEnergy - resourceInPlan.priceWithoutEnergy;
 									if (profitWithoutEnergyCosts > 0) {
-										Log.log("--- Not Flipping Report ---");
-										if (purchaseEnergy) {
-											Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
-										} else {
-											Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice/energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
+										if (verbosity >= 3) {
+											Log.log("--- Not Flipping Report ---");
+											if (purchaseEnergy) {
+												Log.log("EnergyIn: " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice / energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
+											} else {
+												Log.log("EnergyOut(Theoretical): " + format(energyPlan.netAmount) + "@" + format(energyPlan.netPrice / energyPlan.netAmount, 5) + " = $" + format(energyPlan.netPrice) + " (" + format(Math.max(0, extraEnergyOnHand)) + " available)");
+											}
+											Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy / resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
+											Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy / resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
+											Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
+											Log.log("--- --- ---");
 										}
-										Log.log("Buy: " + resourceInPlan.amount + "@" + format(resourceInPlan.priceWithoutEnergy/resourceInPlan.amount, 5) + " = $" + format(resourceInPlan.priceWithoutEnergy));
-										Log.log("Sell: " + resourceOutPlan.amount + "@" + format(resourceOutPlan.priceWithoutEnergy/resourceOutPlan.amount, 5) + " = $" + format(resourceOutPlan.priceWithoutEnergy));
-										Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
-										Log.log("--- --- ---");
 									} else {
-										Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
+										if (verbosity >= 3) Log.log("Profit in theory: $" + format(profit) + " on " + resourceType + " so not flipping.");
 									}
 								}
 							} else {
-								Log.warn("Not trying to flip " + resourceType + " because failed to make energyPlan.");
+								if (verbosity >= 1) Log.warn("Not trying to flip " + resourceType + " because failed to make energyPlan.");
 							}
 						} else {
-							Log.warn("Not trying to flip " + resourceType + " because " + flipPlansOrError);
+							if (verbosity >= 1) Log.warn("Not trying to flip " + resourceType + " because " + flipPlansOrError);
 						}
 					} else {
-						Log.warn("Not trying to flip " + resourceType + " because failed to make creditsPerEnergyEstimate.");
+						if (verbosity >= 1) Log.warn("Not trying to flip " + resourceType + " because failed to make creditsPerEnergyEstimate.");
 					}
 				}
 
@@ -427,9 +436,11 @@ export default class BuySellLogic {
 							if (energyOutPlan !== null) {
 								queuePlans([energyOutPlan], terminal);
 								queuedSellExtraPlan = true;
-								Log.log("--- Queued Plan Report ---");
-								Log.log("Sell extra " + resourceType + ": " + format(energyOutPlan.netAmount) + "@" + format(energyOutPlan.netPrice/energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
-								Log.log("--- --- ---");
+								if (verbosity >= 3) {
+									Log.log("--- Queued Plan Report ---");
+									Log.log("Sell extra " + resourceType + ": " + format(energyOutPlan.netAmount) + "@" + format(energyOutPlan.netPrice / energyOutPlan.netAmount, 5) + " = $" + format(energyOutPlan.netPrice));
+									Log.log("--- --- ---");
+								}
 								break;
 							}
 						}
@@ -443,14 +454,16 @@ export default class BuySellLogic {
 								if (mineralOutPlan !== null) {
 									queuePlans([mineralOutPlan], terminal);
 									queuedSellExtraPlan = true;
-									Log.log("--- Queued Plan Report ---");
-									Log.log("Sell extra " + resourceType + ": " + format(mineralOutPlan.amount) + "@" + format(mineralOutPlan.priceWithoutEnergy/mineralOutPlan.amount, 5) + " = $" + format(mineralOutPlan.priceWithoutEnergy));
-									Log.log("--- --- ---");
+									if (verbosity >= 3) {
+										Log.log("--- Queued Plan Report ---");
+										Log.log("Sell extra " + resourceType + ": " + format(mineralOutPlan.amount) + "@" + format(mineralOutPlan.priceWithoutEnergy / mineralOutPlan.amount, 5) + " = $" + format(mineralOutPlan.priceWithoutEnergy));
+										Log.log("--- --- ---");
+									}
 									break;
 								}
 							}
 						} else {
-							Log.warn("Not trying to sell extra " + resourceType + " because failed to make creditsPerEnergyEstimate.");
+							if (verbosity >= 1) Log.warn("Not trying to sell extra " + resourceType + " because failed to make creditsPerEnergyEstimate.");
 							break;
 						}
 					}
@@ -473,9 +486,11 @@ export default class BuySellLogic {
 							if (energyInPlan !== null) {
 								queuePlans([energyInPlan], terminal);
 								queuedBuyReservePlan = true;
-								Log.log("--- Queued Plan Report ---");
-								Log.log("Buy reserve " + resourceType + ": " + format(energyInPlan.netAmount) + "@" + format(energyInPlan.netPrice/energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
-								Log.log("--- --- ---");
+								if (verbosity >= 3) {
+									Log.log("--- Queued Plan Report ---");
+									Log.log("Buy reserve " + resourceType + ": " + format(energyInPlan.netAmount) + "@" + format(energyInPlan.netPrice / energyInPlan.netAmount, 5) + " = $" + format(energyInPlan.netPrice));
+									Log.log("--- --- ---");
+								}
 								break;
 							}
 						}
@@ -488,14 +503,16 @@ export default class BuySellLogic {
 								if (mineralInPlan !== null) {
 									queuePlans([mineralInPlan], terminal);
 									queuedBuyReservePlan = true;
-									Log.log("--- Queued Plan Report ---");
-									Log.log("Buy reserve " + resourceType + ": " + format(mineralInPlan.amount) + "@" + format(mineralInPlan.priceWithoutEnergy/mineralInPlan.amount, 5) + " = $" + format(mineralInPlan.priceWithoutEnergy));
-									Log.log("--- --- ---");
+									if (verbosity >= 3) {
+										Log.log("--- Queued Plan Report ---");
+										Log.log("Buy reserve " + resourceType + ": " + format(mineralInPlan.amount) + "@" + format(mineralInPlan.priceWithoutEnergy / mineralInPlan.amount, 5) + " = $" + format(mineralInPlan.priceWithoutEnergy));
+										Log.log("--- --- ---");
+									}
 									break;
 								}
 							}
 						} else {
-							Log.warn("Not trying to buy reserve " + resourceType + " because failed to make creditsPerEnergyEstimate.");
+							if (verbosity >= 1) Log.warn("Not trying to buy reserve " + resourceType + " because failed to make creditsPerEnergyEstimate.");
 							break;
 						}
 					}

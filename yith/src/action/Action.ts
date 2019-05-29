@@ -88,11 +88,12 @@ export default class Action {
 
 	//---//
 
-	static moveToRange(creep: Creep, target: RoomPosition|{pos: RoomPosition}, colorCode: string, range: number) {
+	static moveToRange(creep: Creep, target: RoomPosition|{pos: RoomPosition}, colorCode: string, range: number, opts?: Partial<MoveToOpts>) {
 		ActionQ.push(creep, new MoveToRangeAction(
 			Util.posOf(target),
 			colorCode,
-			range
+			range,
+			opts
 		));
 	}
 

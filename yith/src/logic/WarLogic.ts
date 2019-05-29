@@ -32,8 +32,8 @@ export default class WarLogic {
 
 		if (warTank && warHeal) {
 			//tick warTank
-			if (!Action.continue(warTank)) {
-				if (warTank.pos.getRangeTo(warHeal) <= 1) {
+			if (warTank.pos.getRangeTo(warHeal) <= 1 || Util.isRoomExit(warTank.pos)) {
+				if (!Action.continue(warTank)) {
 					//set destroyFlag
 					let destroyFlags = warDestroyFlags.filter(flag => flag.pos.roomName == warTank.room.name);
 					if (destroyFlags.length <= 0) destroyFlags = warDestroyFlags;
@@ -56,8 +56,13 @@ export default class WarLogic {
 						} else {
 							destroyFlag.remove();
 						}
-					} catch (e) {
-						Action.moveToRange(warTank, destroyFlag, '#006600', 1);
+					} catch(e) {
+						Action.moveToRange(warTank, destroyFlag, '#006600', 1, {
+							maxOps: 12000, //default is 2000
+							reusePath: (warTank.pos.roomName !== destroyFlag.pos.roomName)
+								? 10
+								: undefined
+						});
 					}
 				}
 			}
@@ -112,9 +117,9 @@ export default class WarLogic {
 				generateBody: (energyAvailable: number): BodyPartConstant[] => {
 
 
-					//TODO: switch back to other version
-					return Util.generateBodyFromSet([HEAL, MOVE], energyAvailable, 1);
-					// return Util.generateBodyFromSet([HEAL, MOVE], energyAvailable);
+
+					// return Util.generateBodyFromSet([MOVE, HEAL], energyAvailable, 1);
+					return Util.generateBodyFromSet([MOVE, HEAL], energyAvailable);
 
 
 
@@ -125,9 +130,14 @@ export default class WarLogic {
 			return {
 				priority: 7,
 				generateBody: (energyAvailable: number): BodyPartConstant[] => {
-					//TODO: switch back to other version
-					return Util.generateBodyFromSet([MOVE, ATTACK, ATTACK], energyAvailable, null, true);
-					// return Util.generateBodyFromSet([TOUGH, TOUGH, MOVE, MOVE, MOVE, ATTACK], energyAvailable, null, true);
+
+
+
+					// return Util.generateBodyFromSet([MOVE, ATTACK, ATTACK], energyAvailable, 1, true);
+					return Util.generateBodyFromSet([TOUGH, MOVE, MOVE, MOVE, ATTACK, ATTACK], energyAvailable, null, true);
+
+
+
 				},
 				memory: {role: 'warTank'}
 			};
